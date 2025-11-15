@@ -50,7 +50,7 @@ class Orchestrator_CBBA:
         self.cvg_iter = self.nt
 
     #merged
-    def launch_agents(self, method = "baseline", detector = "none"):
+    def launch_agents(self, method = "baseline", detector = "none", dynamic_communication_graph = True, update_freq = 1, visualize_graph = False, viz_freq = 10):
         """
         CBBA iterations to determine assignment, minsum and makespan
         :param method: "baseline" => gives baseline CBBA allocation. "global" => gives GCBBA (ours) allocation
@@ -59,6 +59,8 @@ class Orchestrator_CBBA:
         "decentralized" => our decentralized detector suited to GCBBA.
         :return: allocation, minsum, makespan
         """
+        if dynamic_communication_graph:
+            self.track_connectivity_history()
         # track progress
         D = self.D
         Nmin = int(min(self.nt, self.Lt * self.na))
@@ -73,6 +75,28 @@ class Orchestrator_CBBA:
             nb_cons = 2*D
         build_bundle = "FULLBUNDLE" if method == "baseline" else "ADD"
         for iter in tqdm(range(nb_iter)):
+
+            # Update communication graph if dynamic
+            if dynamic_communication_graph and (iter % update_freq == 0):
+                G_new, D_new = self.update_communication_graph()
+
+                # log connectivity metrics
+                self.log_connectivity(iter)
+
+                # Update Concensus if Diameter changed
+                if D_new != self.D and method == "global":
+                    D = D_new
+                    nb_cons = 2 * D
+            
+            # visualize dynamic graph
+            if visualize_graph and (iter % viz_freq == 0 or iter == nb_iter - 1):
+                self.visualize_dynamic_graph(iter, save_fig=True)
+
+            # Update Agents positions in dynamic communication graph scenario
+            if dynamic_communication_graph:
+                for agent in self.agents:
+                    agent.update_position()
+
             I = list(range(self.na))
             for i in I:
                 if detector == "decentralized" and self.agents[i].converged==False:
@@ -111,6 +135,10 @@ class Orchestrator_CBBA:
                     print("EARLY CONVERGENCE AT {}/{}".format(iter+1, nb_iter))
                     self.cvg_iter = iter
                     break
+        
+        if dynamic_communication_graph:
+            self.plot_connectivity_evolution()
+        
         return self.assig_history[-1], self.bid_history[-1], self.max_times[-1]
 
     def get_cvg_iter(self):
@@ -196,8 +224,263 @@ class Orchestrator_CBBA:
                         Pb.remove(k)
                 S += abs(agent.evaluate_path(Pb, metric="RPT"))
         return S
+    
+    def update_communication_graph(self):
+        """
+        Update communication graph G according to current agents positions and communication range
+        :return: updated G and diameter D
+        """
 
+        G_new = np.zeros((self.na, self.na))
 
+        # Each agent can always communicate with itself
+        for i in range(self.na):
+            G_new[i, i] = 1.0
+
+        # Checking distances between all agent pairs
+        for i in range(self.na):
+            for k in range(i+1, self.na):
+                if i != k:
+                    dist = np.linalg.norm(self.agents[i].pos - self.agents[k].pos)
+                    if dist <= self.agents[i].comm_range:
+                        G_new[i, k] = 1.0
+                        G_new[k, i] = 1.0 # Symmetric graph
+                    else:
+                        G_new[i, k] = 0.0
+                        G_new[k, i] = 0.0
+
+        # Check if full connectivity is maintained
+        if not verify_connection(G_new):
+            pass
+
+        # Update Graph
+        self.G = G_new
+
+        # Update each agent's communication matrix
+        for agent in self.agents:
+            agent.G = G_new
+            agent.nb_neigh = np.sum(agent.G[agent.id, :]) - 1
+        
+        # Update diameter D
+        try:
+            raw_graph = nx.from_numpy_array(G_new)
+            if nx.is_connected(raw_graph):
+                D_new = nx.diameter(raw_graph)
+            else:
+                D_new = self.D  # Keep previous diameter if not connected
+                # D_new = float('inf')  # Infinite diameter if not connected
+        except:
+            D_new = self.D  # Keep previous diameter if error occurs
+        
+        return G_new, D_new
+
+    def visualize_dynamic_graph(self, iteration, save_fig=True):
+        """
+        Visualize agent positions, tasks, and communication links at a given iteration
+        """
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
+        
+        # Plot 1: Agent positions, tasks, and communication ranges
+        ax1.set_title(f'Agent Positions & Tasks (Iteration {iteration})', fontsize=14, fontweight='bold')
+        
+        # Plot tasks
+        task_x = [task.pos[0] for task in self.tasks]
+        task_y = [task.pos[1] for task in self.tasks]
+        ax1.scatter(task_x, task_y, c='red', marker='x', s=150, linewidths=3, label='Tasks', zorder=5)
+        for j, task in enumerate(self.tasks):
+            ax1.text(task.pos[0]+0.15, task.pos[1]+0.15, f'T{j}', fontsize=9, 
+                    bbox=dict(boxstyle='round,pad=0.3', facecolor='yellow', alpha=0.7))
+        
+        # Plot agents with communication ranges
+        colors = plt.cm.tab10(np.linspace(0, 1, self.na))
+        for i, agent in enumerate(self.agents):
+            # Agent position
+            ax1.scatter(agent.pos[0], agent.pos[1], c=[colors[i]], marker='o', 
+                    s=200, edgecolors='black', linewidths=2, label=f'Agent {i}', zorder=5)
+            ax1.text(agent.pos[0]+0.15, agent.pos[1]-0.25, f'A{i}', fontsize=10, 
+                    fontweight='bold', bbox=dict(boxstyle='round,pad=0.3', 
+                    facecolor='lightblue', alpha=0.8))
+            
+            # Communication range circle
+            circle = plt.Circle(agent.pos, agent.comm_range, color=colors[i], 
+                            fill=False, linestyle='--', linewidth=2, alpha=0.4)
+            ax1.add_patch(circle)
+            
+            # Draw current path
+            if len(agent.p) > 0:
+                path_positions = [agent.pos] + [self.tasks[task_id].pos for task_id in agent.p]
+                path_x = [pos[0] for pos in path_positions]
+                path_y = [pos[1] for pos in path_positions]
+                ax1.plot(path_x, path_y, c=colors[i], linestyle='-', linewidth=2, 
+                        alpha=0.6, marker='>', markersize=8)
+        
+        ax1.set_xlabel('X Position', fontsize=12)
+        ax1.set_ylabel('Y Position', fontsize=12)
+        ax1.grid(True, alpha=0.3)
+        ax1.legend(loc='upper right', fontsize=8, ncol=2)
+        ax1.axis('equal')
+        
+        # Plot 2: Communication graph
+        ax2.set_title(f'Communication Graph (Iteration {iteration})', fontsize=14, fontweight='bold')
+        raw_graph = nx.from_numpy_array(self.G)
+        
+        # Position nodes at agent locations
+        pos_dict = {i: self.agents[i].pos for i in range(self.na)}
+        
+        # Draw edges
+        nx.draw_networkx_edges(raw_graph, pos=pos_dict, ax=ax2, width=2, 
+                            alpha=0.5, edge_color='gray')
+        
+        # Draw nodes
+        node_colors = [colors[i] for i in range(self.na)]
+        nx.draw_networkx_nodes(raw_graph, pos=pos_dict, ax=ax2, 
+                            node_color=node_colors, node_size=500, 
+                            edgecolors='black', linewidths=2)
+        
+        # Draw labels
+        labels = {i: f'A{i}' for i in range(self.na)}
+        nx.draw_networkx_labels(raw_graph, pos=pos_dict, labels=labels, ax=ax2, 
+                            font_size=10, font_weight='bold')
+        
+        # Add statistics
+        num_edges = raw_graph.number_of_edges()
+        is_connected = nx.is_connected(raw_graph)
+        try:
+            diameter = nx.diameter(raw_graph) if is_connected else 'inf'
+        except:
+            diameter = 'N/A'
+        
+        stats_text = f'Edges: {num_edges}\nConnected: {is_connected}\nDiameter: {diameter}'
+        ax2.text(0.02, 0.98, stats_text, transform=ax2.transAxes, 
+                fontsize=10, verticalalignment='top',
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+        
+        ax2.set_xlabel('X Position', fontsize=12)
+        ax2.set_ylabel('Y Position', fontsize=12)
+        ax2.grid(True, alpha=0.3)
+        ax2.axis('equal')
+        
+        plt.tight_layout()
+        
+        if save_fig:
+            plt.savefig(f'dynamic_graph_iter_{iteration:03d}.png', dpi=150, bbox_inches='tight')
+            plt.close()
+        else:
+            plt.show()
+
+    def track_connectivity_history(self):
+        """
+        Track how connectivity changes over iterations
+        """
+        self.connectivity_history = []
+        self.diameter_history = []
+        
+    def log_connectivity(self, iteration):
+        """
+        Log connectivity metrics at each iteration
+        """
+        raw_graph = nx.from_numpy_array(self.G)
+        is_connected = nx.is_connected(raw_graph)
+        num_edges = raw_graph.number_of_edges()
+        
+        if is_connected:
+            diameter = nx.diameter(raw_graph)
+        else:
+            diameter = float('inf')
+        
+        self.connectivity_history.append({
+            'iteration': iteration,
+            'connected': is_connected,
+            'edges': num_edges,
+            'diameter': diameter
+        })
+
+    def plot_connectivity_evolution(self):
+        """
+        Plot how connectivity metrics evolve over time
+        """
+        if not hasattr(self, 'connectivity_history') or len(self.connectivity_history) == 0:
+            print("No connectivity history to plot")
+            return
+        
+        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+        
+        iterations = [h['iteration'] for h in self.connectivity_history]
+        connected = [h['connected'] for h in self.connectivity_history]
+        edges = [h['edges'] for h in self.connectivity_history]
+        diameters = [h['diameter'] if h['diameter'] != float('inf') else None 
+                    for h in self.connectivity_history]
+        
+        # Plot 1: Connectivity status
+        axes[0, 0].plot(iterations, connected, marker='o', linewidth=2)
+        axes[0, 0].set_title('Network Connectivity Over Time', fontweight='bold')
+        axes[0, 0].set_xlabel('Iteration')
+        axes[0, 0].set_ylabel('Connected (1=Yes, 0=No)')
+        axes[0, 0].grid(True, alpha=0.3)
+        axes[0, 0].set_ylim([-0.1, 1.1])
+        
+        # Plot 2: Number of edges
+        axes[0, 1].plot(iterations, edges, marker='s', color='green', linewidth=2)
+        axes[0, 1].set_title('Number of Communication Links', fontweight='bold')
+        axes[0, 1].set_xlabel('Iteration')
+        axes[0, 1].set_ylabel('Number of Edges')
+        axes[0, 1].grid(True, alpha=0.3)
+        
+        # Plot 3: Network diameter
+        valid_iters = [it for it, d in zip(iterations, diameters) if d is not None]
+        valid_diams = [d for d in diameters if d is not None]
+        axes[1, 0].plot(valid_iters, valid_diams, marker='^', color='orange', linewidth=2)
+        axes[1, 0].set_title('Network Diameter Over Time', fontweight='bold')
+        axes[1, 0].set_xlabel('Iteration')
+        axes[1, 0].set_ylabel('Diameter')
+        axes[1, 0].grid(True, alpha=0.3)
+        
+        # Plot 4: Agent positions heatmap (density)
+        all_positions = np.array([agent.pos for agent in self.agents])
+        axes[1, 1].scatter(all_positions[:, 0], all_positions[:, 1], 
+                        s=200, alpha=0.6, c=range(self.na), cmap='viridis')
+        axes[1, 1].set_title('Final Agent Positions', fontweight='bold')
+        axes[1, 1].set_xlabel('X Position')
+        axes[1, 1].set_ylabel('Y Position')
+        axes[1, 1].grid(True, alpha=0.3)
+        axes[1, 1].axis('equal')
+        
+        plt.tight_layout()
+        plt.savefig('connectivity_evolution.png', dpi=150, bbox_inches='tight')
+        plt.show()
+
+    def create_animation(self, output_filename='dynamic_cbba.gif', fps=2):
+        """
+        Create an animation from saved iteration images
+        Requires: pip install pillow
+        """
+        import glob
+        from PIL import Image
+        
+        # Get all saved images
+        image_files = sorted(glob.glob('dynamic_graph_iter_*.png'))
+        
+        if len(image_files) == 0:
+            print("No images found to create animation")
+            return
+        
+        # Load images
+        images = [Image.open(img) for img in image_files]
+        
+        # Save as GIF
+        images[0].save(
+            output_filename,
+            save_all=True,
+            append_images=images[1:],
+            duration=int(1000/fps),  # milliseconds per frame
+            loop=0
+        )
+        
+        print(f"Animation saved as {output_filename}")
+        
+        # Clean up individual images (optional)
+        # for img_file in image_files:
+        #     os.remove(img_file)
 
 class CBBA_Agent:
 
@@ -213,6 +496,7 @@ class CBBA_Agent:
         # tuple, position in cartesian plane
         self.pos = np.array([char[0], char[1]])
         self.speed = char[2]
+        self.comm_range = char[3] if len(char) > 3 else 3.0
         # list of tasks (should be of size =nb agents)
         self.tasks = tasks
         # int, nb of tasks
@@ -223,7 +507,6 @@ class CBBA_Agent:
         self.makespan = 0
         self.updated_makespan = 0
         self.length = 0
-
 
         self.metric = metric
         if self.metric == "RPT":
@@ -606,7 +889,29 @@ class CBBA_Agent:
             self.flag_won = (len(self.p) != self.len_p_before)
             self.len_p_before = len(self.p)
 
+    def update_position(self):
+        """
+        Update agent position based on current task assignment
+        :param new_pos: new position (x,y)
+        :return:
+        """
+        dt = 0.1  # time step
+        if len(self.p) > 0:
+            # Move towards the first task in the path
+            next_task = self.tasks[self.p[0]]
+            direction = next_task.pos - self.pos
+            distance_to_next_task = np.linalg.norm(direction)
 
+            if distance_to_next_task > 0:
+                # Move towards the task at the agent's speed
+                step_size = min(self.speed * dt, distance_to_next_task)
+                self.pos += (direction / distance_to_next_task) * step_size
+
+            if distance_to_next_task < 0.1:
+                # Arrived at the task, remove it from the path
+                self.p.pop(0)
+                if len(self.b) > 0:
+                    self.b.pop(0)
 
 if __name__ == "__main__":
     """
@@ -624,22 +929,32 @@ if __name__ == "__main__":
     sp_lim = [1, 5]
     dur_lim = [1, 5]
     metric = "RPT"
+    comm_range = 3.0
 
     # communication graph initialization
     raw_graph, G = create_graph(na, p=0.5, graph_type="random", seed=seed)
     D = nx.diameter(raw_graph)
     agents, tasks = task_agent_init(na=na, nt=nt, pos_lim=xlim, sp_lim=sp_lim, dur_lim=dur_lim, lamb_lim=[0.95, 0.95],
                                     clim=[1, 1])
+    
+    # Add communication range to agents
+    for i in range(na):
+        agents[i] = np.concatenate((agents[i], np.array([comm_range])))
+    
     orch_cbba= Orchestrator_CBBA(G, D, tasks, agents, Lt, metric=metric)
 
     # allocation launching
     t0 = time.time()
-    assig, tot_score, makespan = orch_cbba.launch_agents(method="global", detector = "decentralized")
+    assig, tot_score, makespan = orch_cbba.launch_agents(method="global", detector = "decentralized", dynamic_communication_graph=True, update_freq=5, visualize_graph = True, viz_freq=10)
     tf0 = np.round(1000 * (time.time() - t0))
 
     print("GCBBA-{} total score. = {}; max score = {}; time = {} ms; assignment = {}".format(metric,tot_score, makespan, tf0,
                                                                                               assig))
+
+    orch_cbba.create_animation('cbba_dynamic.gif', fps=2)
+
     draw_paths(tasks, agents, assig, tot_score, title="GCBBA-{}".format(metric))
+
 
 
 
