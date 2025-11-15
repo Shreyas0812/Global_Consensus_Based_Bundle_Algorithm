@@ -7,6 +7,30 @@ import time
 from tqdm import tqdm
 from tools_real_time import random_agent_init, random_task_init
 
+class Orchestrator_GCBBA:
+    """
+    Orchestrated GCBBA class
+    """
+    def __init__(self, agents, tasks, Lt, metric = "RPT"):
+        """
+        Initialization of orchestrated GCBBA
+        :param agents: list of agents characteristics
+        :param tasks: list of tasks characteristics
+        :param Lt: maximum number of tasks per agent
+        :param metric: "RPT" or "TDR"
+        """
+        self.na = len(agents) # number of agents
+        self.agents = agents  # agents characteristics - [x_pos, y_pos, speed]
+        self.Lt = Lt          # maximum number of tasks per agent   
+
+        self.nt = len(tasks) # number of tasks
+        self.tasks = tasks  # tasks characteristics - [x_pos, y_pos, duration, lambda, weight]
+
+        self.metric = metric
+
+        # Launch Clock
+        self.start_time = time.perf_counter()
+
 if __name__ == "__main__":
     """ 
     To see GCBBA execution 
@@ -42,3 +66,4 @@ if __name__ == "__main__":
 
     # TODO: Creating tasks from yaml file -- inject stations
 
+    orch_GCBBA = Orchestrator_GCBBA(agents, tasks, Lt, metric)
