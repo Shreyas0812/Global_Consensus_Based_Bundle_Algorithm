@@ -140,3 +140,20 @@ def draw_paths(pos_t, pos_a, assignment, score, title="Solution"):
     ax.set_title(title + "\nMin-Sum = {}".format(score))
     plt.show()
 
+
+def handle_disconnection(self):
+    """
+    Strategy when graph becomes disconnected
+    """
+    # Option 1: Increase communication range temporarily
+    for agent in self.agents:
+        agent.comm_range *= 1.2
+    
+    # Option 2: Use store-and-forward mechanism
+    # Agents store messages and forward when they reconnect
+    
+    # Option 3: Accept partial solutions per connected component
+    components = list(nx.connected_components(nx.from_numpy_array(self.G)))
+    print(f"Graph has {len(components)} connected components")
+    
+    return len(components)
