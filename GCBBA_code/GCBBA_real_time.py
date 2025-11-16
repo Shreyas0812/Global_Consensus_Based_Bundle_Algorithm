@@ -105,3 +105,13 @@ if __name__ == "__main__":
     # TODO: Creating tasks from yaml file -- inject stations
 
     orch_GCBBA = Orchestrator_GCBBA(agents, tasks, Lt, metric, comm_range)
+
+    # GCBBA execution
+    t_start = time.time()
+    # TODO: Implement GCBBA execution logic
+    # Simple loop with sleep to simulate GCBBA iterations
+    for i in tqdm(range(1000)):
+        time.sleep(0.01)  # sleep 10 ms per iteration
+        # TODO: replace with actual GCBBA iteration logic
+    t_end = time.time()
+    print(f"GCBBA execution time: {np.round((t_end - t_start), 3)} seconds")
