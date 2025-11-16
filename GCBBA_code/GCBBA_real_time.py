@@ -79,6 +79,12 @@ class Orchestrator_GCBBA:
             agent_id = int(agent[0])
             task_assignments[agent_id] = []  # initialize empty assignment for each agent
 
+        # TODO: Implement GCBBA algorithm
+        # - Bundle building phase
+        # - Consensus phase
+        # - Task allocation and assignment
+        # - Calculate tot_score and makespan
+        
         return task_assignments, tot_score, makespan
 
 if __name__ == "__main__":
