@@ -14,13 +14,14 @@ def random_agent_init(na = 10, pos_lim = [-5, 5], sp_lim = [1, 5]):
     :param na: number of agents
     :param pos_lim: (x,y) limits
     :param sp_lim: agent speed limits
-    :return:
+    :return: list of agents with characteristics [agent_id, x_pos, y_pos, speed]
     """
-    # Agents: [x_pos, y_pos, speed]
+    # Agents: [agent_id, x_pos, y_pos, speed]
     agents = [np.concatenate(
-                (np.random.uniform(pos_lim[0], pos_lim[1], 2), 
+                (np.array([i]),  # agent_id
+                 np.random.uniform(pos_lim[0], pos_lim[1], 2), 
                  np.random.uniform(sp_lim[0], sp_lim[1], 1))
-                 ) for _ in range(na)]          
+                 ) for i in range(na)]          
     
     return agents
 

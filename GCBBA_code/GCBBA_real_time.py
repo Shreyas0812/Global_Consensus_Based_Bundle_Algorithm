@@ -20,7 +20,7 @@ class Orchestrator_GCBBA:
         :param metric: "RPT" or "TDR"
         """
         self.na = len(agents) # number of agents
-        self.agents = agents  # agents characteristics - [x_pos, y_pos, speed]
+        self.agents = agents  # agents characteristics - [agent_id, x_pos, y_pos, speed]
         self.Lt = Lt          # maximum number of tasks per agent   
 
         self.nt = len(tasks) # number of tasks
@@ -50,7 +50,7 @@ class Orchestrator_GCBBA:
         for i in range(self.na):
             for j in range(self.na):
                 if i != j:
-                    dist_ij = np.linalg.norm(self.agents[i][0:2] - self.agents[j][0:2])
+                    dist_ij = np.linalg.norm(self.agents[i][1:3] - self.agents[j][1:3])
                     if dist_ij <= comm_range:
                         G[i][j] = 1.0
                         G[j][i] = 1.0 # undirected graph 
@@ -65,6 +65,21 @@ class Orchestrator_GCBBA:
             print("Warning: Communication graph is not connected!")
 
         return G, D
+
+    def launch_agents(self):
+        """
+        Launch GCBBA for all agents
+        :return:
+        """
+        task_assignments = {}  # dictionary of task assignments {agent_id: [task_ids]}
+        tot_score = np.inf          # min-sum objective (total travel + task duration time), Goal is to minimize this
+        makespan = np.inf           # makespan objective (maximum time taken by any agent), Goal is to minimize this
+
+        for agent in self.agents:
+            agent_id = int(agent[0])
+            task_assignments[agent_id] = []  # initialize empty assignment for each agent
+
+        return task_assignments, tot_score, makespan
 
 if __name__ == "__main__":
     """ 
@@ -108,10 +123,15 @@ if __name__ == "__main__":
 
     # GCBBA execution
     t_start = time.time()
-    # TODO: Implement GCBBA execution logic
-    # Simple loop with sleep to simulate GCBBA iterations
-    for i in tqdm(range(1000)):
-        time.sleep(0.01)  # sleep 10 ms per iteration
-        # TODO: replace with actual GCBBA iteration logic
+
+    # task_assignments = {}  # dictionary of task assignments {agent_id: [task_ids]}
+    task_assignments, tot_score, makespan = orch_GCBBA.launch_agents()
+
     t_end = time.time()
+
+    print("GCBBA Task Assignments:")
+    for agent_id, tasks in task_assignments.items():
+        print(f"Agent {agent_id}: {tasks}")
+    print(f"Total Score (min-sum): {tot_score}")
+    print(f"Makespan: {makespan}")
     print(f"GCBBA execution time: {np.round((t_end - t_start), 3)} seconds")
