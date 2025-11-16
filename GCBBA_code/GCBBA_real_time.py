@@ -84,6 +84,13 @@ class Orchestrator_GCBBA:
         # - Consensus phase
         # - Task allocation and assignment
         # - Calculate tot_score and makespan
+
+        D = self.D
+        Nmin = int(min(self.nt, self.Lt * self.na)) # total number of iterations
+        
+        build_bundle = "ADD"
+        nb_consensus = 2 * D                        # number of consensus rounds per iteration
+        nb_iter = Nmin                              # number of iterations
         
         return task_assignments, tot_score, makespan
 
