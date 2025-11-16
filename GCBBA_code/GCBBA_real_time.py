@@ -11,7 +11,7 @@ class Orchestrator_GCBBA:
     """
     Orchestrated GCBBA class
     """
-    def __init__(self, agents, tasks, Lt, metric = "RPT"):
+    def __init__(self, agents, tasks, Lt, metric = "RPT", comm_range = 30.0):
         """
         Initialization of orchestrated GCBBA
         :param agents: list of agents characteristics
@@ -28,8 +28,43 @@ class Orchestrator_GCBBA:
 
         self.metric = metric
 
+        self.comm_range = comm_range
+
         # Launch Clock
         self.start_time = time.perf_counter()
+
+        # Establish Communication Graph based on current positions
+        self.G, self.D = self.update_comm_graph() # communication matrix G, diameter D
+
+        print(f"Initial Communication Graph Diameter: {self.D}")
+    
+    def update_comm_graph(self):
+        """
+        Update communication graph based on current positions of agents
+        :return: communication matrix G, distance matrix D
+        """
+        G = np.zeros((self.na, self.na))
+        D = 1                               # initial diameter - Fully connected graph
+        comm_range = self.comm_range
+
+        for i in range(self.na):
+            for j in range(self.na):
+                if i != j:
+                    dist_ij = np.linalg.norm(self.agents[i][0:2] - self.agents[j][0:2])
+                    if dist_ij <= comm_range:
+                        G[i][j] = 1.0
+                        G[j][i] = 1.0 # undirected graph 
+
+            G[i][i] = 1.0
+
+        raw_graph = nx.from_numpy_array(G)
+        if nx.is_connected(raw_graph):
+            D = nx.diameter(raw_graph)
+        else:
+            D = self.na - 1  # set to max diameter if not connected
+            print("Warning: Communication graph is not connected!")
+
+        return G, D
 
 if __name__ == "__main__":
     """ 
@@ -56,6 +91,9 @@ if __name__ == "__main__":
 
     metric = "RPT"
 
+    # Communication range
+    comm_range = 30.0
+
     # Creating agents randomly
     agents = random_agent_init(na=na, pos_lim=xlim, sp_lim=sp_lim)
 
@@ -66,4 +104,4 @@ if __name__ == "__main__":
 
     # TODO: Creating tasks from yaml file -- inject stations
 
-    orch_GCBBA = Orchestrator_GCBBA(agents, tasks, Lt, metric)
+    orch_GCBBA = Orchestrator_GCBBA(agents, tasks, Lt, metric, comm_range)
