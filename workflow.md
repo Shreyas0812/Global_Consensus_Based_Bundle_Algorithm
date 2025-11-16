@@ -37,9 +37,10 @@ This document describes the workflow and architecture of the Global Consensus-Ba
                   │
                   ├─ Initialize Agents:
                   │  └─> random_agent_init()
+                  │      • Generate agent IDs (0 to na-1)
                   │      • Generate random positions (x, y)
                   │      • Generate random speeds
-                  │      • Return: List of [x_pos, y_pos, speed]
+                  │      • Return: List of [agent_id, x_pos, y_pos, speed]
                   │
                   ├─ Initialize Tasks:
                   │  └─> random_task_init()
@@ -108,8 +109,36 @@ This document describes the workflow and architecture of the Global Consensus-Ba
                   │
                   ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              READY FOR GCBBA EXECUTION                       │
-│              (To be implemented)                             │
+│              LAUNCH GCBBA AGENTS                             │
+│              launch_agents()                                 │
+└─────────────────┬───────────────────────────────────────────┘
+                  │
+                  ├─ Initialize Data Structures:
+                  │  • task_assignments = {} (empty dict)
+                  │  • tot_score = inf (min-sum objective)
+                  │  • makespan = inf (max time objective)
+                  │
+                  ├─ For each agent:
+                  │  ├─> Extract agent_id from agent[0]
+                  │  └─> Initialize empty task list: 
+                  │      task_assignments[agent_id] = []
+                  │
+                  ├─ Return:
+                  │  └─> (task_assignments, tot_score, makespan)
+                  │
+                  ▼
+┌─────────────────────────────────────────────────────────────┐
+│              DISPLAY RESULTS                                 │
+└─────────────────┬───────────────────────────────────────────┘
+                  │
+                  ├─ Print Task Assignments per Agent
+                  ├─ Print Total Score (min-sum objective)
+                  ├─ Print Makespan (max time objective)
+                  └─ Print Execution Time
+                  │
+                  ▼
+┌─────────────────────────────────────────────────────────────┐
+│              END PROGRAM                                     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -119,8 +148,9 @@ This document describes the workflow and architecture of the Global Consensus-Ba
 
 ### Agent Representation
 ```
-Agent = [x_position, y_position, speed]
+Agent = [agent_id, x_position, y_position, speed]
 ```
+- **agent_id**: Unique identifier for the agent (0 to na-1)
 - **x_position**: X-coordinate in the environment
 - **y_position**: Y-coordinate in the environment
 - **speed**: Movement speed of the agent
@@ -143,6 +173,24 @@ Task = [x_position, y_position, duration, lambda, weight]
 - **Properties**: 
   - Symmetric (undirected graph)
   - Self-loops (G[i][i] = 1.0)
+
+### Task Assignments
+```
+task_assignments = {agent_id: [list of task_ids]}
+```
+- **Type**: Dictionary mapping agent IDs to assigned task lists
+- **Key**: agent_id (integer from 0 to na-1)
+- **Value**: List of task IDs assigned to that agent
+- **Example**: `{0: [5, 12, 23], 1: [8, 15], 2: []}`
+
+### Performance Objectives
+- **tot_score**: Total score for min-sum optimization (lower is better)
+  - Sum of travel times + task execution times across all agents
+  - Currently initialized to infinity (awaiting implementation)
+  
+- **makespan**: Maximum time taken by any single agent (lower is better)
+  - Represents the bottleneck agent's total time
+  - Currently initialized to infinity (awaiting implementation)
 
 ---
 
@@ -183,17 +231,24 @@ Task = [x_position, y_position, duration, lambda, weight]
 4. **Create Orchestrator**: Initialize GCBBA orchestration system
 
 ### Communication Graph Update
-1. **Distance Calculation**: Compute pairwise distances between all agents
+1. **Distance Calculation**: Compute pairwise distances between all agents (using positions at indices 1:3)
 2. **Connectivity Check**: Determine which agents can communicate
 3. **Graph Construction**: Build adjacency matrix representing network
 4. **Topology Analysis**: Calculate diameter to understand communication delays
 
+### GCBBA Execution Phase
+1. **Initialize Tracking**: Create empty task assignment dictionary for each agent
+2. **Set Objectives**: Initialize tot_score and makespan to infinity
+3. **Prepare for Allocation**: Framework ready for bundle algorithm implementation
+4. **Return Results**: Task assignments and performance metrics
+
 ### Future Extensions (Placeholders in Code)
 - Loading agents from YAML configuration files
 - Loading tasks from YAML files (e.g., injection stations)
-- Real-time task allocation algorithm
+- Core task allocation algorithm in launch_agents()
 - Dynamic graph updates as agents move
 - Consensus mechanism implementation
+- Score and makespan calculation logic
 
 ---
 
@@ -210,13 +265,16 @@ GCBBA_real_time.py
 │
 ├── Orchestrator_GCBBA Class
 │   ├── __init__(): Initialize system
-│   └── update_comm_graph(): Update network topology
+│   ├── update_comm_graph(): Update network topology
+│   └── launch_agents(): Execute GCBBA algorithm
 │
 └── Main Execution Block
     ├── Parameter Configuration
     ├── Agent Initialization
     ├── Task Initialization
-    └── Orchestrator Creation
+    ├── Orchestrator Creation
+    ├── GCBBA Execution
+    └── Results Display
 ```
 
 ---
@@ -242,18 +300,23 @@ GCBBA_real_time.py
 
 ✅ **Completed:**
 - Basic orchestrator structure
-- Agent and task initialization
+- Agent and task initialization with unique IDs
 - Communication graph construction
 - Diameter calculation
 - Random scenario generation
+- Basic launch_agents() framework
+- Task assignment data structure
+- Performance metrics tracking (tot_score, makespan)
+- Execution time measurement
 
 ⏳ **TODO (as noted in code):**
 - YAML-based configuration loading
-- Real-time task allocation algorithm
+- Task allocation algorithm implementation
 - Consensus mechanism
 - Bundle building process
 - Conflict resolution
 - Dynamic updates during execution
+- Actual assignment logic in launch_agents()
 
 ---
 
@@ -290,6 +353,19 @@ tasks = random_task_init(nt=100, pos_lim=[-5,5], dur_lim=[1,5])
 
 # Initialize orchestrator
 orch = Orchestrator_GCBBA(agents, tasks, Lt, "RPT", comm_range)
+
+# Execute GCBBA
+t_start = time.time()
+task_assignments, tot_score, makespan = orch.launch_agents()
+t_end = time.time()
+
+# Display results
+print("GCBBA Task Assignments:")
+for agent_id, tasks in task_assignments.items():
+    print(f"Agent {agent_id}: {tasks}")
+print(f"Total Score (min-sum): {tot_score}")
+print(f"Makespan: {makespan}")
+print(f"GCBBA execution time: {np.round((t_end - t_start), 3)} seconds")
 ```
 
 ---
