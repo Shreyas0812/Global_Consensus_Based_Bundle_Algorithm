@@ -1,3 +1,18 @@
+"""
+GCBBA Real-Time Implementation
+
+
+Notes for self
+
+Think about in real time robotics and where each of these modules will go.
+
+But even before that, implement GCBBA in real time with moving agents and tasks being added dynamically.
+
+First implement GCBBA as is, but with agents moving in real time.
+
+"""
+
+
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
