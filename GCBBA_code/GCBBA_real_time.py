@@ -7,6 +7,15 @@ import time
 from tqdm import tqdm
 from tools_real_time import random_agent_init, random_task_init
 
+class GCBBA_AGENT:
+    """
+    GCBBA Agent class, defined by an id, a position (x,y), and a speed
+    """
+    def __init__(self, id, agent_info):
+        self.id = id
+        self.pos = np.array(agent_info[0], agent_info[1])
+        self.speed = agent_info[2]
+
 class Task:
     """
     Task class, defined by an id, a position (x,y), duration, and lambda (only for TDR)
@@ -44,21 +53,13 @@ class Orchestrator_GCBBA:
         self.start_time = time.perf_counter()
 
         # initialize
-        # Populates self.agents with Agent objects
-        self.initialize_agents(agents)             
         # Populates self.tasks with Task objects
         self.initialize_tasks(tasks)        
+        # Populates self.agents with Agent objects
+        self.initialize_agents(agents)             
 
         # Establish Communication Graph based on current positions
-        self.G, self.D = self.update_comm_graph() # communication matrix G, diameter D
-    
-    def initialize_agents(self, agents_list):
-        """
-        Initialize agents for GCBBA
-        agents characteristics - [agent_id, x_pos, y_pos, speed]
-        """
-        # TODO: Define GCBBA_Agent class
-        self.agents = agents_list
+        # self.G, self.D = self.update_comm_graph() # communication matrix G, diameter D
     
     def initialize_tasks(self, tasks_list):
         """
@@ -69,6 +70,17 @@ class Orchestrator_GCBBA:
         for i in range(self.nt):
             task_info = tasks_list[i]
             self.tasks.append(Task(id=i, task_info=task_info))
+
+    def initialize_agents(self, agents_list):
+        """
+        Initialize agents for GCBBA
+        agents characteristics - [agent_id, x_pos, y_pos, speed]
+        """
+        # TODO: Define GCBBA_Agent class
+        self.agents = []
+        for i in range(self.na):
+            agent_info = agents_list[i]
+            self.agents.append(GCBBA_AGENT(id=i, agent_info=agent_info))
 
     def update_comm_graph(self):
         """
