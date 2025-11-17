@@ -13,8 +13,16 @@ class GCBBA_AGENT:
     """
     def __init__(self, id, agent_info):
         self.id = id
-        self.pos = np.array(agent_info[0], agent_info[1])
-        self.speed = agent_info[2]
+        # agent_info expected as [x_pos, y_pos, speed]
+        self.pos = np.array([agent_info[0], agent_info[1]])
+        self.speed = float(agent_info[2])
+
+        # Communication parameters
+        self.comm_range = 30.0  # communication range
+        self.G = None           # communication matrix
+        self.D = None           # diameter of communication graph
+
+        #TODO: A node which will detect and update communication graph periodically, For now, done in orchestrator when all agents have been initialized
 
 class Task:
     """
@@ -57,9 +65,6 @@ class Orchestrator_GCBBA:
         self.initialize_tasks(tasks)        
         # Populates self.agents with Agent objects
         self.initialize_agents(agents)             
-
-        # Establish Communication Graph based on current positions
-        # self.G, self.D = self.update_comm_graph() # communication matrix G, diameter D
     
     def initialize_tasks(self, tasks_list):
         """
@@ -80,21 +85,63 @@ class Orchestrator_GCBBA:
         self.agents = []
         for i in range(self.na):
             agent_info = agents_list[i]
-            self.agents.append(GCBBA_AGENT(id=i, agent_info=agent_info))
+            gcbba_agent_object = GCBBA_AGENT(id=i, agent_info=agent_info)
+            self.agents.append(gcbba_agent_object)
 
+        # TODO: Some module in ROS which detects and updates graph will be added to GCBBA_Agent, done here with other locations for now
+
+        # TODO: Orchestrator should not be updating agent comm graph, each agent should do it themselves, done here for now
+        self.G, self.D = self.update_comm_graph()
+        for agent in self.agents:
+            agent.G = self.G
+            agent.D = self.D
+
+
+    def launch_agents(self):
+        """
+        Launch GCBBA for all agents
+        :return:
+        """
+        task_assignments = {}  # dictionary of task assignments {agent_id: [task_ids]}
+        tot_score = np.inf          # min-sum objective (total travel + task duration time), Goal is to minimize this
+        makespan = np.inf           # makespan objective (maximum time taken by any agent), Goal is to minimize this
+
+        for agent in self.agents:
+            agent_id = agent.id
+            task_assignments[agent_id] = []  # initialize empty assignment for each agent
+
+        # TODO: Implement GCBBA algorithm
+        # - Bundle building phase
+        # - Consensus phase
+        # - Task allocation and assignment
+        # - Calculate tot_score and makespan
+
+        D = self.D
+        Nmin = int(min(self.nt, self.Lt * self.na)) # total number of iterations
+
+        build_bundle = "ADD"
+        nb_consensus = 2 * D                        # number of consensus rounds per iteration
+        nb_iter = Nmin                              # number of iterations
+
+        return task_assignments, tot_score, makespan
+    
+    # Function which updates based on agents current position, will be a node in ROS later
     def update_comm_graph(self):
         """
         Update communication graph based on current positions of agents
         :return: communication matrix G, distance matrix D
         """
+
         G = np.zeros((self.na, self.na))
-        D = 1                               # initial diameter - Fully connected graph
+        D = 1                                       # initial diameter - fully connected (placeholder)
+
         comm_range = self.comm_range
 
         for i in range(self.na):
             for j in range(self.na):
                 if i != j:
-                    dist_ij = np.linalg.norm(self.agents[i][1:3] - self.agents[j][1:3])
+                    # use agent positions stored on agent objects
+                    dist_ij = np.linalg.norm(self.agents[i].pos - self.agents[j].pos)
                     if dist_ij <= comm_range:
                         G[i][j] = 1.0
                         G[j][i] = 1.0 # undirected graph 
@@ -109,34 +156,6 @@ class Orchestrator_GCBBA:
             print("Warning: Communication graph is not connected!")
 
         return G, D
-
-    def launch_agents(self):
-        """
-        Launch GCBBA for all agents
-        :return:
-        """
-        task_assignments = {}  # dictionary of task assignments {agent_id: [task_ids]}
-        tot_score = np.inf          # min-sum objective (total travel + task duration time), Goal is to minimize this
-        makespan = np.inf           # makespan objective (maximum time taken by any agent), Goal is to minimize this
-
-        for agent in self.agents:
-            agent_id = int(agent[0])
-            task_assignments[agent_id] = []  # initialize empty assignment for each agent
-
-        # TODO: Implement GCBBA algorithm
-        # - Bundle building phase
-        # - Consensus phase
-        # - Task allocation and assignment
-        # - Calculate tot_score and makespan
-
-        D = self.D
-        Nmin = int(min(self.nt, self.Lt * self.na)) # total number of iterations
-        
-        build_bundle = "ADD"
-        nb_consensus = 2 * D                        # number of consensus rounds per iteration
-        nb_iter = Nmin                              # number of iterations
-        
-        return task_assignments, tot_score, makespan
 
 if __name__ == "__main__":
     """ 
