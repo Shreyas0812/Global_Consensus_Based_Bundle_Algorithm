@@ -7,6 +7,16 @@ import time
 from tqdm import tqdm
 from tools_real_time import random_agent_init, random_task_init
 
+class Task:
+    """
+    Task class, defined by an id, a position (x,y), duration, and lambda (only for TDR)
+    """
+    def __init__(self, id, task_info):
+        self.id = id
+        self.pos = np.array([task_info[0], task_info[1]])
+        self.duration = task_info[2]
+        self.lamb = task_info[3]
+
 class Orchestrator_GCBBA:
     """
     Orchestrated GCBBA class
@@ -19,12 +29,12 @@ class Orchestrator_GCBBA:
         :param Lt: maximum number of tasks per agent
         :param metric: "RPT" or "TDR"
         """
-        self.na = len(agents) # number of agents
-        self.agents = agents  # agents characteristics - [agent_id, x_pos, y_pos, speed]
-        self.Lt = Lt          # maximum number of tasks per agent   
+        self.na = len(agents)   # number of agents
+        self.agents = []        # list of Agent objects
+        self.Lt = Lt            # maximum number of tasks per agent
 
-        self.nt = len(tasks) # number of tasks
-        self.tasks = tasks  # tasks characteristics - [x_pos, y_pos, duration, lambda, weight]
+        self.nt = len(tasks)    # number of tasks
+        self.tasks = []         # list of Task objects
 
         self.metric = metric
 
@@ -33,11 +43,33 @@ class Orchestrator_GCBBA:
         # Launch Clock
         self.start_time = time.perf_counter()
 
+        # initialize
+        # Populates self.agents with Agent objects
+        self.initialize_agents(agents)             
+        # Populates self.tasks with Task objects
+        self.initialize_tasks(tasks)        
+
         # Establish Communication Graph based on current positions
         self.G, self.D = self.update_comm_graph() # communication matrix G, diameter D
-
-        print(f"Initial Communication Graph Diameter: {self.D}")
     
+    def initialize_agents(self, agents_list):
+        """
+        Initialize agents for GCBBA
+        agents characteristics - [agent_id, x_pos, y_pos, speed]
+        """
+        # TODO: Define GCBBA_Agent class
+        self.agents = agents_list
+    
+    def initialize_tasks(self, tasks_list):
+        """
+        Initialize tasks for GCBBA
+        tasks characteristics - [x_pos, y_pos, duration, lambda, weight]
+        """
+        self.tasks = []
+        for i in range(self.nt):
+            task_info = tasks_list[i]
+            self.tasks.append(Task(id=i, task_info=task_info))
+
     def update_comm_graph(self):
         """
         Update communication graph based on current positions of agents
