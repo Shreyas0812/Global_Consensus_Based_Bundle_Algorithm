@@ -37,7 +37,18 @@ class GCBBA_AGENT:
         self.G = None           # communication matrix
         self.D = None           # diameter of communication graph
 
+        self.makespan = 0
+        self.updated_makespan = 0
+
         #TODO: A node which will detect and update communication graph periodically, For now, done in orchestrator when all agents have been initialized
+
+    def create_bundle(self):
+        """
+        Create bundle of tasks for the agent
+        """
+        self.updated_makespan = self.makespan
+        print(f"Agent {self.id} creating bundle...")
+        pass  # TODO: Implement bundle creation logic
 
 class Task:
     """
@@ -137,6 +148,21 @@ class Orchestrator_GCBBA:
         build_bundle = "ADD"
         nb_consensus = 2 * D                        # number of consensus rounds per iteration
         nb_iter = Nmin                              # number of iterations
+
+
+        for iter in tqdm(range(nb_iter)):
+            # Bundle Building Phase
+            for agent in self.agents:
+                pass  # TODO: Implement bundle building for each agent
+
+            # Consensus Phase
+            for _ in range(nb_consensus):
+                for agent in self.agents:
+                    pass  # TODO: Implement consensus for each agent
+
+            # Task Assignment Phase
+            for agent in self.agents:
+                pass  # TODO: Implement task assignment for each agent
 
         return task_assignments, tot_score, makespan
     
