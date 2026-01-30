@@ -49,8 +49,12 @@ if __name__ == "__main__":
     induct_positions = [(induct_pos_flat[i], induct_pos_flat[i+1], induct_pos_flat[i+2], induct_pos_flat[i+3]) 
                         for i in range(0, len(induct_pos_flat), 4)]
     
-    # Create communication graph based on distance
-    raw_graph, G = create_graph_with_range(agent_positions, induct_positions, comm_range)
+    # Create communication graph based on distance (agent-to-agent and agent-to-induct)
+    # raw_graph, G = create_graph_with_range(agent_positions, induct_positions, comm_range)
+    
+    # Create communication graph based on distance (agent-to-agent only)
+    raw_graph, G = create_graph_with_range(agent_positions, comm_range)
+    
     D = nx.diameter(raw_graph)
 
 
