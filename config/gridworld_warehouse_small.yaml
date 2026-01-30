@@ -68,9 +68,9 @@ create_gridworld_node:
       2, 20, 0, 3,     # Induct/Dock 3
       2, 26, 0, 4,      # Induct/Dock 4
       26, 4, 0, 5,
-      27, 4, 0, 5,
-      26, 25, 0, 6,
-      27, 25, 0, 6,
+      27, 4, 0, 6,
+      26, 25, 0, 7,
+      27, 25, 0, 8,
     ]
     
     # Eject (exit) stations - Storage bins
