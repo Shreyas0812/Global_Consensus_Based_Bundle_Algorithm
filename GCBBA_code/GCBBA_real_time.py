@@ -40,6 +40,16 @@ class GCBBA_AGENT:
         self.makespan = 0
         self.updated_makespan = 0
 
+        # Tasks not in bundle 
+        # TODO: Later, tasks will be added dynamically, for now, initialize with all tasks
+        self.nt = 10
+        self.filtered_tasks = list(range(self.nt))  # all tasks initially
+
+        self.bundle = []        # current bundle of tasks
+        self.path = []          # current path of tasks
+
+        self.flag_won = True    # flag indicating if agent won last consensus
+        self.placement = []      # Array that stores optimal placement of tasks in bundle before adding to path
         #TODO: A node which will detect and update communication graph periodically, For now, done in orchestrator when all agents have been initialized
 
     def create_bundle(self):
@@ -48,7 +58,62 @@ class GCBBA_AGENT:
         """
         self.updated_makespan = self.makespan
         print(f"Agent {self.id} creating bundle...")
-        pass  # TODO: Implement bundle creation logic
+
+        if len(self.bundle) < self.Lt: # maximum number of tasks not reached
+            self.filtered_tasks = [task_id for task_id in self.filtered_tasks if task_id not in self.path]
+            if self.flag_won == True: # last consensus won, recalculate gains and optimal placement for all tasks
+                self.placement = np.zeros(self.nt)
+                for task_idx in self.filtered_tasks:
+                    c, opt_placement = self.compute_c(task_idx)
+                    self.c[task_idx] = c
+                    self.placement[task_idx] = opt_placement
+
+                    bids = []
+                    for j in range(self.nt):
+                        can_bid = False
+
+                        if j in self.filtered_tasks:
+                            if self.c[j] > self.y[j]:
+                                can_bid = True
+                            elif self.c[j] == self.y[j] and self.id < self.z[j]:
+                                can_bid = True
+
+                        if can_bid:
+                            bids.append(self.c[j])
+                        else:
+                            bids.append(self.min_value)
+                    
+                    J = np.argmax(bids)
+            else: # last consensus lost, reuse previous calculations
+                bids = []
+                for j in range(self.nt):
+                    can_bid = False
+
+                    if j in self.filtered_tasks:
+                        if self.c[j] > self.y[j]:
+                            can_bid = True
+                        elif self.c[j] == self.y[j] and self.id < self.z[j]:
+                            can_bid = True
+
+                    if can_bid:
+                        bids.append(self.c[j])
+                    else:
+                        bids.append(self.min_value)
+
+                J = np.argmax(bids)
+            
+            if J in self.path or bids[J] <= self.min_value:
+                print(f"Agent {self.id} could not add any task to bundle.")
+                return  # No task can be added
+
+            best_task = J
+            self.bundle.append(best_task)
+            self.path.insert(int(self.placement[J]), best_task)
+            self.S.append(self.evaluate_path(self.path))
+            self.y[J]   = self.c[J]
+            self.z[J]   = self.id
+            self.updated_makespan = max(self.updated_makespan, -self.evaluate_path(self.path))
+
 
 class Task:
     """
@@ -153,7 +218,7 @@ class Orchestrator_GCBBA:
         for iter in tqdm(range(nb_iter)):
             # Bundle Building Phase
             for agent in self.agents:
-                pass  # TODO: Implement bundle building for each agent
+                agent.create_bundle()
 
             # Consensus Phase
             for _ in range(nb_consensus):
