@@ -3,7 +3,8 @@ import os
 from math import ceil
 
 from tools import *
-from tools_warehouse import create_graph_with_range
+from tools_warehouse import create_graph_with_range, agent_init, task_init
+from GCBBA_Orchestrator import GCBBA_Orchestrator
 
 def read_warehouse_config(config_path):
     with open(config_path, 'r') as file:
@@ -13,6 +14,7 @@ def read_warehouse_config(config_path):
 if __name__ == "__main__":
 
     seed = 5 # Random seed for reproducibility
+    np.random.seed(seed)
 
     # Get the path to the config file
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -49,6 +51,16 @@ if __name__ == "__main__":
     induct_positions = [(induct_pos_flat[i], induct_pos_flat[i+1], induct_pos_flat[i+2], induct_pos_flat[i+3]) 
                         for i in range(0, len(induct_pos_flat), 4)]
     
+    # Extract inject station positions from config (these become tasks)
+    inject_pos_flat = params['inject_stations']
+    inject_positions = [(inject_pos_flat[i], inject_pos_flat[i+1], inject_pos_flat[i+2], inject_pos_flat[i+3]) 
+                        for i in range(0, len(inject_pos_flat), 4)] 
+
+    # Extract eject station positions from config (these become tasks)
+    eject_pos_flat = params['eject_stations']
+    eject_positions = [(eject_pos_flat[i], eject_pos_flat[i+1], eject_pos_flat[i+2], eject_pos_flat[i+3]) 
+                       for i in range(0, len(eject_pos_flat), 4)]
+    
     # Create communication graph based on distance (agent-to-agent and agent-to-induct)
     # raw_graph, G = create_graph_with_range(agent_positions, induct_positions, comm_range)
     
@@ -56,6 +68,16 @@ if __name__ == "__main__":
     raw_graph, G = create_graph_with_range(agent_positions, comm_range)
     
     D = nx.diameter(raw_graph)
+    
+    # Initialize agents and tasks from warehouse config
+    agents = agent_init(agent_positions, sp_lim=sp_lim)
+    inject_tasks = task_init(inject_positions, dur_lim=dur_lim)
+    eject_tasks = task_init(eject_positions, dur_lim=dur_lim)
+
+    tasks = inject_tasks + eject_tasks  # Combine inject and eject tasks
+
+    # Initialize orchestrator (placeholder for now)
+    # orch_warehouse = GCBBA_Orchestrator(G, D, tasks, agents, Lt)
 
 
     

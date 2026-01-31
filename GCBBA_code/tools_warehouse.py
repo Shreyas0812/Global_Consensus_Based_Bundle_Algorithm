@@ -42,6 +42,41 @@ def create_graph_with_range(agent_positions, comm_range):
     return raw_graph, np.asarray(G.astype('float'))
 
 
+def agent_init(agent_positions, sp_lim=[1, 5]):
+    """
+    Create agents characteristics from warehouse configuration
+    :param agent_positions: List of agent positions [(x, y, z, id), ...]
+    :param sp_lim: agent speed limits
+    :return: agents list
+    """
+    # Agents: [x_pos, y_pos, speed]
+    agents = []
+    for pos in agent_positions:
+        speed = np.random.uniform(sp_lim[0], sp_lim[1], 1)
+        agents.append(np.concatenate(([pos[0], pos[1]], speed)))
+    
+    return agents
+
+
+def task_init(task_positions, dur_lim=[1, 10], lamb_lim=[0.95, 0.95], clim=[1, 1]):
+    """
+    Create tasks characteristics from warehouse configuration
+    :param task_positions: List of task positions [(x, y, z, id), ...] - these become tasks
+    :param dur_lim: task duration limits
+    :param lamb_lim: lambda (TDR) limits
+    :param clim: weights (TDR) limits (useless in this implementation)
+    :return: tasks list
+    """
+    # Tasks: [x_pos, y_pos, duration, lambda, weight]
+    tasks = []
+    for pos in task_positions:
+        duration = np.random.uniform(dur_lim[0], dur_lim[1], 1)
+        lamb = np.random.uniform(lamb_lim[0], lamb_lim[1], 1)
+        weight = np.random.uniform(clim[0], clim[1], 1)
+        tasks.append(np.concatenate(([pos[0], pos[1]], duration, lamb, weight)))
+    
+    return tasks
+
 
 # Unused code
 
