@@ -53,7 +53,7 @@ def agent_init(agent_positions, sp_lim=[1, 5]):
     agents = []
     for pos in agent_positions:
         speed = np.random.uniform(sp_lim[0], sp_lim[1], 1)
-        agents.append(np.concatenate(([pos[0], pos[1]], speed)))
+        agents.append(np.concatenate(([pos[0], pos[1]], speed, pos[-1:])))
     
     return agents
 

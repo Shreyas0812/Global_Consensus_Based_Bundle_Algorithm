@@ -2,6 +2,7 @@ import networkx as nx
 import numpy as np
 import time
 from GCBBA_Task import GCBBA_Task
+from GCBBA_Agent import GCBBA_Agent
 
 
 class GCBBA_Orchestrator:
@@ -33,6 +34,7 @@ class GCBBA_Orchestrator:
         
         # initialize tasks and agents
         self.initialize_all()
+        print("Orchestrator initialized with {} agents and {} tasks.".format(self.na, self.nt))
         self.bid_history = []
         self.assig_history = []
         self.max_times = []
@@ -51,8 +53,12 @@ class GCBBA_Orchestrator:
             self.tasks.append(GCBBA_Task(id=j, char=char))
     
     def initialize_agents(self):
-        # Placeholder - will implement agent initialization
-        pass
+        self.agents = []
+        for i in range(self.na):
+            char = self.char_a[i]
+            self.agents.append(
+                GCBBA_Agent(id=i, G=self.G, char=char, tasks=self.tasks, Lt=self.Lt, 
+                           start_time=self.start_time, metric=self.metric, D=self.D))
     
     def launch_agents(self, method="global", detector="decentralized"):
         """
