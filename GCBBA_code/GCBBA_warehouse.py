@@ -3,7 +3,7 @@ import os
 from math import ceil
 
 from tools import *
-from tools_warehouse import create_graph_with_range, agent_init, task_init
+from tools_warehouse import create_graph_with_range, agent_init, random_task_init, task_init
 from GCBBA_Orchestrator import GCBBA_Orchestrator
 
 def read_warehouse_config(config_path):
@@ -71,13 +71,19 @@ if __name__ == "__main__":
     
     # Initialize agents and tasks from warehouse config
     agents = agent_init(agent_positions, sp_lim=sp_lim)
-    inject_tasks = task_init(inject_positions, dur_lim=dur_lim)
-    eject_tasks = task_init(eject_positions, dur_lim=dur_lim)
 
-    tasks = inject_tasks + eject_tasks  # Combine inject and eject tasks
+    # random task init
+    # LATER TODO: REMOVE THIS AND USE WAREHOUSE CONFIG TO INITIALIZE TASKS
+    tasks = random_task_init(nt=nt, xlim=xlim, ylim=ylim, 
+                             dur_lim=dur_lim, lamb_lim=[0.95, 0.95], clim=[1, 1])
+    
+    # inject_tasks = task_init(inject_positions, dur_lim=dur_lim)
+    # eject_tasks = task_init(eject_positions, dur_lim=dur_lim)
+
+    # tasks = inject_tasks + eject_tasks  # Combine inject and eject tasks
 
     # Initialize orchestrator (placeholder for now)
-    # orch_warehouse = GCBBA_Orchestrator(G, D, tasks, agents, Lt)
+    orch_warehouse = GCBBA_Orchestrator(G, D, tasks, agents, Lt)
 
 
     
