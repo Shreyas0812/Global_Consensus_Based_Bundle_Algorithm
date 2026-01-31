@@ -22,6 +22,7 @@ class GCBBA_Agent:
         # tuple, position in cartesian plane
         self.pos = np.array([char[0], char[1]])
         self.speed = char[2]
+        self.agent_id = char[3]  # Unique agent identifier from warehouse config
         # list of tasks
         self.tasks = tasks
         # int, nb of tasks
