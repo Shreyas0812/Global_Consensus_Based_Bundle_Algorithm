@@ -1,7 +1,7 @@
 import networkx as nx
 import numpy as np
 import time
-from tools import *
+from GCBBA_Task import GCBBA_Task
 
 
 class GCBBA_Orchestrator:
@@ -48,7 +48,7 @@ class GCBBA_Orchestrator:
         self.tasks = []
         for j in range(self.nt):
             char = self.char_t[j]
-            self.tasks.append(Task(id=j, char=char))
+            self.tasks.append(GCBBA_Task(id=j, char=char))
     
     def initialize_agents(self):
         # Placeholder - will implement agent initialization
