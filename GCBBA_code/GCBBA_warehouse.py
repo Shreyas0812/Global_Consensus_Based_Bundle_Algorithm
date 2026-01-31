@@ -1,6 +1,7 @@
 import yaml
 import os
 from math import ceil
+import time
 
 from tools import *
 from tools_warehouse import create_graph_with_range, agent_init, random_task_init, task_init
@@ -51,10 +52,10 @@ if __name__ == "__main__":
     induct_positions = [(induct_pos_flat[i], induct_pos_flat[i+1], induct_pos_flat[i+2], induct_pos_flat[i+3]) 
                         for i in range(0, len(induct_pos_flat), 4)]
     
-    # Extract inject station positions from config (these become tasks)
-    inject_pos_flat = params['inject_stations']
-    inject_positions = [(inject_pos_flat[i], inject_pos_flat[i+1], inject_pos_flat[i+2], inject_pos_flat[i+3]) 
-                        for i in range(0, len(inject_pos_flat), 4)] 
+    # Extract induct station positions from config (these become tasks)
+    induct_pos_flat = params['induct_stations']
+    induct_positions = [(induct_pos_flat[i], induct_pos_flat[i+1], induct_pos_flat[i+2], induct_pos_flat[i+3]) 
+                        for i in range(0, len(induct_pos_flat), 4)] 
 
     # Extract eject station positions from config (these become tasks)
     eject_pos_flat = params['eject_stations']
@@ -77,13 +78,19 @@ if __name__ == "__main__":
     tasks = random_task_init(nt=nt, xlim=xlim, ylim=ylim, 
                              dur_lim=dur_lim, lamb_lim=[0.95, 0.95], clim=[1, 1])
     
-    # inject_tasks = task_init(inject_positions, dur_lim=dur_lim)
+    # induct_tasks = task_init(induct_positions, dur_lim=dur_lim)
     # eject_tasks = task_init(eject_positions, dur_lim=dur_lim)
 
-    # tasks = inject_tasks + eject_tasks  # Combine inject and eject tasks
+    # tasks = induct_tasks + eject_tasks  # Combine induct and eject tasks
 
     # Initialize orchestrator (placeholder for now)
-    orch_warehouse = GCBBA_Orchestrator(G, D, tasks, agents, Lt)
+    orch_cbba = GCBBA_Orchestrator(G, D, tasks, agents, Lt)
+
+    t0 = time.time()
+    assig, tot_score, makespan = orch_cbba.launch_agents()
+    tf0 = np.round(1000 * (time.time() - t0))
+
+    
 
 
     

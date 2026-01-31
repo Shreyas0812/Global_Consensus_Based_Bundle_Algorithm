@@ -1,0 +1,67 @@
+import networkx as nx
+import numpy as np
+import time
+from tools import *
+
+
+class GCBBA_Orchestrator:
+    """
+    GCBBA Orchestrator for warehouse task allocation
+    """
+    def __init__(self, G, D, char_t, char_a, Lt=1, metric="RPT"):
+        self.G = G
+        # int, number of agents
+        self.na = G.shape[0]
+        # int, number of tasks
+        self.nt = len(char_t)
+        # capacity per agent
+        self.Lt = Lt
+        # task characteristics
+        self.char_t = char_t
+        # agent characteristics
+        self.char_a = char_a
+        # list of all agents
+        self.agents = []
+        # list of all tasks
+        self.tasks = []
+        
+        # clock launch
+        self.start_time = time.perf_counter()
+        
+        self.metric = metric
+        self.D = D
+        
+        # initialize tasks and agents
+        self.initialize_all()
+        self.bid_history = []
+        self.assig_history = []
+        self.max_times = []
+        self.all_times = [0 for _ in range(self.na)]
+        
+        self.cvg_iter = self.nt
+    
+    def initialize_all(self):
+        self.initialize_tasks()
+        self.initialize_agents()
+    
+    def initialize_tasks(self):
+        self.tasks = []
+        for j in range(self.nt):
+            char = self.char_t[j]
+            self.tasks.append(Task(id=j, char=char))
+    
+    def initialize_agents(self):
+        # Placeholder - will implement agent initialization
+        pass
+    
+    def launch_agents(self, method="global", detector="decentralized"):
+        """
+        Launch GCBBA allocation algorithm
+        :param method: "baseline" or "global"
+        :param detector: "none", "centralized", or "decentralized"
+        :return: allocation, minsum, makespan
+        """
+        # Placeholder - will implement the main algorithm
+        
+
+        return None, None, None
