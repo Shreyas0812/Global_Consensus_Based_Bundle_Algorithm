@@ -4,6 +4,7 @@ GCBBA Agent class for warehouse task allocation
 
 import numpy as np
 from math import inf
+import copy
 
 
 class GCBBA_Agent:
@@ -86,6 +87,51 @@ class GCBBA_Agent:
         Compute the bid for a given task based on current path
         :param task_id: id of the task to compute bid for
         :return: bid value, optimal placement index
+
+        c^RPT_ij(p_i) = X - min_{1≤l≤|p_i|+1} [L_i(p_i ⊕_l j)^α · W_i(p_i ⊕_l j)^β]
+        X is implicit
+        alpha = 1, beta = 0 for RPT
+        L_i(p): Completion time of entire path p (Equation 13)
         """
-        # Placeholder for bid computation logic
-        return 0, 0  # Return dummy values for now
+        path_bids = []
+        P = self.p # List of currrent task ids in path
+        
+        for pos in range(len(self.p) + 1):
+            P1 = copy.deepcopy(P)
+            P1.insert(pos, task_id)
+            path_score = self.evaluate_path(P1)
+
+            path_bids.append(path_score)
+        
+        max_bid = np.max(path_bids)
+        optimal_pos = np.argwhere(path_bids == max_bid)[-1][0]
+        
+        return max_bid, optimal_pos
+
+    def evaluate_path(self, path):
+        """
+        Evaluate the score of a given path based on the selected metric
+        :param path: list of tasks in the path
+        :return: score of the path -- total path time or makespan
+        Later TODO: When the tasks are updated to start and end positions, update this function to
+        account for travel time between tasks.
+
+        L_i([j^i_1, ..., j^i_n]) = τ_{i,j^i_n}([j^i_1, ..., j^i_n])
+        S_i(p_i) = Σ_{j∈p_i} c_ij(p^:j_i)
+        """
+        cur_pos = self.pos
+        score = 0
+        time = 0
+
+        if len(path) > 0:
+            for j in range(len(path)):
+                task = self.tasks[path[j]]
+                time += np.linalg.norm(cur_pos - task.pos) / self.speed
+                time += task.duration
+                score -= time
+
+                time = 0  # Reset time for next task
+
+                cur_pos = task.pos
+        return score
+
