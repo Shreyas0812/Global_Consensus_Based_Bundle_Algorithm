@@ -59,3 +59,33 @@ class GCBBA_Agent:
         
         # convergence observation list
         self.their_net_cvg = [False for _ in range(self.D)]
+        self.cvg_counter = 0
+
+        # # Marginal gain list
+        # self.Wa = []
+        # # List to maintain tasks before insertion
+        # self.placement = []
+        # Has agent won previous bid? (used for reusing previous path)
+        self.flag_won = True
+        # # size of path at previous iteration
+        # self.len_p_before = 0
+
+    def create_bundle(self, iter):
+        
+        if len(self.p) < self.Lt: # Check if bundle is not full already
+            filtered_task_ids = [t.id for t in self.tasks if t.id not in self.p]
+            if self.flag_won == True:
+                placement = np.zeros(self.nt)
+                for j in filtered_task_ids:
+                    c, opt_place = self.compute_c(j) # c_ij(p_i) = S_i(p_i ⊕_opt j) - S_i(p_i)
+
+        pass  # Placeholder for bundle creation method
+
+    def compute_c(self, task_id):
+        """
+        Compute the bid for a given task based on current path
+        :param task_id: id of the task to compute bid for
+        :return: bid value, optimal placement index
+        """
+        # Placeholder for bid computation logic
+        return 0, 0  # Return dummy values for now

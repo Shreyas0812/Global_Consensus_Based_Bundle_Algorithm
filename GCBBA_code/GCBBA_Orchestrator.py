@@ -1,6 +1,7 @@
 import networkx as nx
 import numpy as np
 import time
+from tqdm import tqdm
 from GCBBA_Task import GCBBA_Task
 from GCBBA_Agent import GCBBA_Agent
 
@@ -67,7 +68,17 @@ class GCBBA_Orchestrator:
         :param detector: "none", "centralized", or "decentralized"
         :return: allocation, minsum, makespan
         """
-        # Placeholder - will implement the main algorithm
-        
+        D = self.D
+        Nmin = int(min(self.nt, self.Lt * self.na)) # minimum number of assigned tasks
+
+        nb_iter = Nmin # number of main iterations
+        nb_cons = 2*D  # number of consensus rounds per iteration
+
+        for iter in tqdm(range(nb_iter)):
+            for i in range(self.na):
+                # Bundle creation phase
+                self.agents[i]
+                if self.agents[i].converged == False:
+                    self.agents[i].create_bundle(iter)
 
         return None, None, None
