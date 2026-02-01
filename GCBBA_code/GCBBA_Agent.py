@@ -50,6 +50,8 @@ class GCBBA_Agent:
         self.b = []
         # path /ordered bundle
         self.p = []
+
+        self.S = [0] # Store path scores over time
         
         # timestamps
         self.s = [-inf for _ in range(self.na)]
@@ -65,7 +67,7 @@ class GCBBA_Agent:
         # # Marginal gain list
         # self.Wa = []
         # # List to maintain tasks before insertion
-        # self.placement = []
+        self.placement = []
         # Has agent won previous bid? (used for reusing previous path)
         self.flag_won = True
         # # size of path at previous iteration
@@ -73,14 +75,43 @@ class GCBBA_Agent:
 
     def create_bundle(self, iter):
         
-        if len(self.p) < self.Lt: # Check if bundle is not full already
-            filtered_task_ids = [t.id for t in self.tasks if t.id not in self.p]
-            if self.flag_won == True:
-                placement = np.zeros(self.nt)
-                for j in filtered_task_ids:
-                    c, opt_place = self.compute_c(j) # c_ij(p_i) = S_i(p_i ⊕_opt j) - S_i(p_i)
-
-        pass  # Placeholder for bundle creation method
+        if len(self.p) >= self.Lt: # Check if bundle is not full already
+            return
+        
+        filtered_task_ids = [t.id for t in self.tasks if t.id not in self.p]
+        
+        if self.flag_won == True:
+            self.placement = np.zeros(self.nt)
+            for j in filtered_task_ids:
+                c, opt_place = self.compute_c(j) # c_ij(p_i) = S_i(p_i ⊕_opt j) - S_i(p_i)
+                self.c[j] = c
+                self.placement[j] = opt_place
+        else:
+            pass  # Retain previous bids if agent did not win last time
+        
+        bids = []
+        for j in range(self.nt):
+            if j not in filtered_task_ids:
+                bids.append(self.min_val)
+                continue
+            
+            if self.c[j] > self.y[j]:
+                bids.append(self.c[j])
+            elif self.c[j] == self.y[j] and self.z[j] > self.id:
+                bids.append(self.c[j])
+            else:
+                bids.append(self.min_val)
+        J = np.argmax(bids) # task id with highest bid
+    
+        if J in self.p or bids[J] <= self.min_val:
+            return  # No valid task to add
+        
+        self.b.append(J)
+        self.p.insert(int(self.placement[J]), J)
+        self.S.append(self.evaluate_path(self.p))  # Update timestamp for this new task addition
+        
+        self.y[J] = self.c[J]
+        self.z[J] = self.id
 
     def compute_c(self, task_id):
         """
@@ -134,4 +165,3 @@ class GCBBA_Agent:
 
                 cur_pos = task.pos
         return score
-
