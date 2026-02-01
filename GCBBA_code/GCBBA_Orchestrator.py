@@ -79,6 +79,6 @@ class GCBBA_Orchestrator:
                 # Bundle creation phase
                 self.agents[i]
                 if self.agents[i].converged == False:
-                    self.agents[i].create_bundle(iter)
+                    self.agents[i].create_bundle()
 
         return None, None, None

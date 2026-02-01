@@ -73,7 +73,7 @@ class GCBBA_Agent:
         # # size of path at previous iteration
         # self.len_p_before = 0
 
-    def create_bundle(self, iter):
+    def create_bundle(self):
         
         if len(self.p) >= self.Lt: # Check if bundle is not full already
             return
