@@ -71,7 +71,7 @@ class GCBBA_Agent:
         # Has agent won previous bid? (used for reusing previous path)
         self.flag_won = True
         # # size of path at previous iteration
-        # self.len_p_before = 0
+        self.len_p_before = 0
 
     def create_bundle(self):
         
@@ -165,3 +165,159 @@ class GCBBA_Agent:
 
                 cur_pos = task.pos
         return score
+    
+    def resolve_conflicts(self, all_agents, consensus_iter=0, consensus_index_last=False):
+        """
+        Resolve conflicts with neighboring agents based on communication graph G -- consensus phase
+        :param all_agents: list of all agents in the system
+        :param consensus_iter: current consensus iteration number
+        :param consensus_index_last: boolean indicating if this is the last consensus index
+        """
+        pass
+        print("Conflict resolution not implemented yet.")
+
+        niegh_idxs = np.argwhere(self.G[self.id, :] == 1).flatten()
+        neigh_cvg = [True for _ in range(self.D)]
+
+        for k in niegh_idxs:
+            neigh = all_agents[k]
+
+            for j in range(self.nt):
+                # agent k (neighbour) thinks it won task j
+                if neigh.z[j] == neigh.id:
+                    # agent i (self) thinks it won task j
+                    if self.z[j] == self.id:
+                        # conflict: both agents think they won task j
+                        if neigh.y[j] > self.y[j] or (neigh.y[j] == self.y[j] and neigh.id < self.id):
+                            self.update(neigh, j)
+                    # agent i (self) thinks agent k (neighbour) won task j
+                    elif self.z[j] == k:
+                        self.update(neigh, j)
+                    # agent i (self) thinks no one won task j
+                    elif self.z[j] == None:
+                        self.update(neigh, j)
+                    # agent i (self) thinks agent m (neighbour m != k) won task j
+                    else:
+                        m = int(self.z[j])
+                        # update only if neighbour has more recent info
+                        if neigh.s[m] > self.s[m] or neigh.y[j] > self.y[j] or (neigh.y[j] == self.y[j] and neigh.id < self.id):
+                            self.update(neigh, j)
+                
+                # agent k (neighbour) thinks agent i (self) won task j
+                elif neigh.z[j] == self.id:
+                    # agent i (self) thinks it won task j -- leave as is
+                    if self.z[j] == self.id:
+                        self.leave()
+                    # agent i (self) thinks agent k (neighbour) won task j
+                    elif self.z[j] == k:
+                        self.reset(j) # reset task j to clear conflict
+                    # agent i (self) thinks no one won task j
+                    elif self.z[j] == None:
+                        self.leave()
+                    # agent i (self) thinks agent m (neighbour m != k) won task j
+                    else:
+                        m = int(self.z[j])
+                        # update only if neighbour has more recent info
+                        if neigh.s[m] > self.s[m]:
+                            self.reset(j)
+
+                # agent k (neighbour) thinks no one won task j
+                elif neigh.z[j] == None:
+                    # agent i (self) thinks it won task j
+                    if self.z[j] == self.id:
+                        self.leave()
+                    # agent i (self) thinks agent k (neighbour) won task j
+                    elif self.z[j] == k:
+                        self.update(neigh, j)
+                    # agent i (self) thinks no one won task j
+                    elif self.z[j] == None:
+                        self.leave()
+                    # agent i (self) thinks agent m (neighbour m != k) won task j
+                    else:
+                        m = int(self.z[j])
+                        # update only if neighbour has more recent info
+                        if neigh.s[m] > self.s[m]:
+                            self.update(neigh, j)
+                
+                # agent k (neighbour) thinks agent m (neighbour m != k) won task j
+                else:
+                    m = int(neigh.z[j])
+                    # agent i (self) thinks it won task j
+                    if self.z[j] == self.id:
+                        # update only if neighbour has more recent info
+                        if (neigh.s[m] > self.s[m] and neigh.y[j] > self.y[j]) or (neigh.s[m] > self.s[m] and neigh.y[j] == self.y[j] and neigh.id < self.id):
+                            self.update(neigh, j)
+                    # agent i (self) thinks agent k (neighbour) won task j
+                    elif self.z[j] == k:
+                        # neighbour has more recent info
+                        if neigh.s[m] > self.s[m]:
+                            self.update(neigh, j)
+                        # reset stale belief
+                        else:
+                            self.reset(j)
+                    # agent i (self) also thinks agent m won task j
+                    elif self.z[j] == m:
+                        # update only if neighbour has more recent info
+                        if neigh.s[m] > self.s[m]:
+                            self.update(neigh, j)
+                    # agent i (self) thinks no one won task j
+                    elif self.z[j] == None:
+                        # update only if neighbour has more recent info
+                        if neigh.s[m] > self.s[m]:
+                            self.update(neigh, j)
+                    # agent i (self) thinks agent n (neighbour n != k, n != m) won task j
+                    else:
+                        n = int(self.z[j])
+                        # If neighbor has fresher info about BOTH m and n → accept neighbor's view (update)
+                        if neigh.s[m] > self.s[m] and neigh.s[n] > self.s[n]:
+                            self.update(neigh, j)
+                        # If neighbor has fresher info about m AND higher bid → update
+                        elif (neigh.s[m] > self.s[m] and neigh.y[j] > self.y[j]) or (neigh.s[m] > self.s[m] and neigh.y[j] == self.y[j] and neigh.id < self.id):
+                            self.update(neigh, j)
+                        # If neighbor has fresher info about n but you have fresher info about m → conflict, reset
+                        elif neigh.s[n] > self.s[n] and self.s[m] > neigh.s[m]:
+                            self.reset(j)
+            self.compute_s(neigh, consensus_iter)
+
+            # Neighbor convergence observation update
+            for i in range(1, self.D):
+                neigh_cvg[i] = neigh_cvg[i] and neigh.their_net_cvg[i-1]
+            
+        # Update convergence observation
+        self.their_net_cvg[0] = (self.z == self.z_before)
+        for i in range(1, self.D):
+            self.their_net_cvg[i] = neigh_cvg[i] and self.their_net_cvg[i-1]
+        
+        self.converged = self.their_net_cvg[-1]
+
+        if self.converged:
+            self.cvg_counter += 1
+        
+        if consensus_index_last:
+            self.y_before = copy.deepcopy(self.y)
+            self.z_before = copy.deepcopy(self.z)
+            self.flag_won = (len(self.p) != self.len_p_before)
+            self.len_p_before = len(self.p)
+
+
+    def update(self, neighbor, task_id):
+        print (f"Agent {self.id} updating task {task_id} from neighbor {neighbor.id}")
+
+    def reset(self, j):
+        print (f"Agent {self.id} resetting task {j}")
+    
+    def leave(self):
+        print (f"Agent {self.id} doing nothing this round")
+    
+    def compute_s(self, neighbor, consensus_iter):
+        """
+        Update timestamps based on neighbor's information
+        :param neighbor: neighboring agent
+        :param consensus_iter: current consensus iteration number
+        """
+        print(f"Agent {self.id} updating timestamps from neighbor {neighbor.id}")
+        # for m in range(self.na):
+        #     if neighbor.s[m] > self.s[m]:
+        #         self.s[m] = neighbor.s[m]
+        
+        # self.s[neighbor.id] = consensus_iter + 1

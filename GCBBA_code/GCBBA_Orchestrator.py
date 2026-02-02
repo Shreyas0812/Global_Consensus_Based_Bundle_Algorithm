@@ -2,9 +2,10 @@ import networkx as nx
 import numpy as np
 import time
 from tqdm import tqdm
+import copy
+
 from GCBBA_Task import GCBBA_Task
 from GCBBA_Agent import GCBBA_Agent
-
 
 class GCBBA_Orchestrator:
     """
@@ -80,5 +81,18 @@ class GCBBA_Orchestrator:
                 self.agents[i]
                 if self.agents[i].converged == False:
                     self.agents[i].create_bundle()
-
+            
+            # Consensus phase
+            for consensus_num in range(nb_cons):
+                all_agents = copy.deepcopy(self.agents)
+                consesnus_iter = nb_cons * iter + consensus_num
+                if consensus_num == nb_cons - 1:
+                    consensus_index_last = True
+                else:
+                    consensus_index_last = False
+                
+                for i in range(self.na):
+                    if self.agents[i].converged == False:
+                        self.agents[i].resolve_conflicts(all_agents, consensus_iter=consesnus_iter, consensus_index_last=consensus_index_last)
+                
         return None, None, None
