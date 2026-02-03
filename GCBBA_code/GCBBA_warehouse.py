@@ -2,8 +2,9 @@ import yaml
 import os
 from math import ceil
 import time
+import numpy as np
+import networkx as nx
 
-from tools import *
 from tools_warehouse import create_graph_with_range, agent_init, random_task_init, task_init
 from GCBBA_Orchestrator import GCBBA_Orchestrator
 
@@ -89,6 +90,9 @@ if __name__ == "__main__":
     t0 = time.time()
     assig, tot_score, makespan = orch_cbba.launch_agents()
     tf0 = np.round(1000 * (time.time() - t0))
+
+
+    print("GCBBA - total score. = {}; max score = {}; time = {} ms; assignment = {}".format(tot_score, makespan, tf0, assig))
 
     
 
