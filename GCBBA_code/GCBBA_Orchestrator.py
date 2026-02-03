@@ -78,14 +78,13 @@ class GCBBA_Orchestrator:
         for iter in tqdm(range(nb_iter)):
             for i in range(self.na):
                 # Bundle creation phase
-                self.agents[i]
                 if self.agents[i].converged == False:
                     self.agents[i].create_bundle()
             
             # Consensus phase
             for consensus_num in range(nb_cons):
                 all_agents = copy.deepcopy(self.agents)
-                consesnus_iter = nb_cons * iter + consensus_num
+                consensus_iter = nb_cons * iter + consensus_num
                 if consensus_num == nb_cons - 1:
                     consensus_index_last = True
                 else:
@@ -93,6 +92,46 @@ class GCBBA_Orchestrator:
                 
                 for i in range(self.na):
                     if self.agents[i].converged == False:
-                        self.agents[i].resolve_conflicts(all_agents, consensus_iter=consesnus_iter, consensus_index_last=consensus_index_last)
-                
-        return None, None, None
+                        self.agents[i].resolve_conflicts(all_agents, consensus_iter=consensus_iter, consensus_index_last=consensus_index_last)
+            
+            assignment, bid, max_time = self.gather_info()
+            self.assig_history.append(assignment)
+            self.bid_history.append(bid)
+            self.max_times.append(max_time)
+
+            all_converged = np.all([agent.converged for agent in self.agents])
+            if all_converged and self.cvg_iter == self.nt:
+                self.cvg_iter = iter + 1
+                print("All agents converged at iteration {}".format(self.cvg_iter))
+                break
+
+            # if not np.all([agent.converged for agent in self.agents]):
+            #     self.cvg_iter = iter + 1
+
+        if len(self.assig_history) > 0:
+            return self.assig_history[-1], self.bid_history[-1], self.max_times[-1]
+        else:
+            return [], 0, 0
+    
+    def gather_info(self):
+        """
+        Gather assignment and bid information from all agents
+        :return: assignment list, minsum and makespan
+        """
+        bid_sum = 0
+        assignment = []
+        max_time = 0
+
+        for i in range(self.na):
+            agent = self.agents[i]
+            a_time = agent.evaluate_path(agent.p)
+            a_time = -a_time  # since bids are negative times
+
+            if a_time > max_time:
+                max_time = a_time
+            
+            bid_sum += a_time
+            assignment.append(copy.deepcopy(agent.p))
+        
+        return assignment, np.round(bid_sum, 6), max_time
+    
