@@ -5,7 +5,7 @@ GCBBA Agent class for warehouse task allocation
 import numpy as np
 from math import inf
 import copy
-
+import time
 
 class GCBBA_Agent:
     """
@@ -73,6 +73,13 @@ class GCBBA_Agent:
         # # size of path at previous iteration
         self.len_p_before = 0
 
+        # task_id to index mapping
+        self.task_id_to_idx = {task.id: i for i, task in enumerate(self.tasks)}
+
+    def _get_task_index(self, task_id):
+        """Get the index for a given task_id"""
+        return self.task_id_to_idx.get(task_id, None)
+
     def create_bundle(self):
         
         if len(self.p) >= self.Lt: # Check if bundle is not full already
@@ -82,16 +89,19 @@ class GCBBA_Agent:
         
         if self.flag_won == True:
             self.placement = np.zeros(self.nt)
-            for j in filtered_task_ids:
-                c, opt_place = self.compute_c(j) # c_ij(p_i) = S_i(p_i ⊕_opt j) - S_i(p_i)
-                self.c[j] = c
-                self.placement[j] = opt_place
-        else:
-            pass  # Retain previous bids if agent did not win last time
+            for task_id in filtered_task_ids:
+                task_idx = self._get_task_index(task_id)
+                c, opt_place = self.compute_c(task_id) # c_ij(p_i) = S_i(p_i ⊕_opt j) - S_i(p_i)
+                self.c[task_idx] = c
+                self.placement[task_idx] = opt_place
+        
+        # Retain previous bids if agent did not win last time
         
         bids = []
         for j in range(self.nt):
-            if j not in filtered_task_ids:
+            task_id = self.tasks[j].id
+
+            if task_id not in filtered_task_ids:
                 bids.append(self.min_val)
                 continue
             
@@ -101,18 +111,20 @@ class GCBBA_Agent:
                 bids.append(self.c[j])
             else:
                 bids.append(self.min_val)
-        J = np.argmax(bids) # task id with highest bid
+        
+        best_idx = np.argmax(bids) # task id with highest bid
+        best_task_id = self.tasks[best_idx].id
     
-        if J in self.p or bids[J] <= self.min_val:
+        if best_task_id in self.p or bids[best_idx] <= self.min_val:
             return  # No valid task to add
         
-        self.b.append(J)
-        self.p.insert(int(self.placement[J]), J)
+        self.b.append(best_task_id)
+        self.p.insert(int(self.placement[best_idx]), best_task_id)
         self.S.append(self.evaluate_path(self.p))  # Update timestamp for this new task addition
         
-        self.y[J] = self.c[J]
-        self.z[J] = self.id
-
+        self.y[best_idx] = self.c[best_idx]
+        self.z[best_idx] = self.id
+    
     def compute_c(self, task_id):
         """
         Compute the bid for a given task based on current path
@@ -156,7 +168,10 @@ class GCBBA_Agent:
 
         if len(path) > 0:
             for j in range(len(path)):
-                task = self.tasks[path[j]]
+                task_id = path[j]
+                task_idx = self._get_task_index(task_id)
+                task = self.tasks[task_idx]
+
                 time += np.linalg.norm(cur_pos - task.pos) / self.speed
                 time += task.duration
                 score -= time
@@ -173,9 +188,6 @@ class GCBBA_Agent:
         :param consensus_iter: current consensus iteration number
         :param consensus_index_last: boolean indicating if this is the last consensus index
         """
-        pass
-        print("Conflict resolution not implemented yet.")
-
         niegh_idxs = np.argwhere(self.G[self.id, :] == 1).flatten()
         neigh_cvg = [True for _ in range(self.D)]
 
@@ -183,25 +195,27 @@ class GCBBA_Agent:
             neigh = all_agents[k]
 
             for j in range(self.nt):
+                task_id = self.tasks[j].id
+
                 # agent k (neighbour) thinks it won task j
                 if neigh.z[j] == neigh.id:
                     # agent i (self) thinks it won task j
                     if self.z[j] == self.id:
                         # conflict: both agents think they won task j
                         if neigh.y[j] > self.y[j] or (neigh.y[j] == self.y[j] and neigh.id < self.id):
-                            self.update(neigh, j)
+                            self.update(neigh, task_id)
                     # agent i (self) thinks agent k (neighbour) won task j
                     elif self.z[j] == k:
-                        self.update(neigh, j)
+                        self.update(neigh, task_id)
                     # agent i (self) thinks no one won task j
                     elif self.z[j] == None:
-                        self.update(neigh, j)
+                        self.update(neigh, task_id)
                     # agent i (self) thinks agent m (neighbour m != k) won task j
                     else:
                         m = int(self.z[j])
                         # update only if neighbour has more recent info
                         if neigh.s[m] > self.s[m] or neigh.y[j] > self.y[j] or (neigh.y[j] == self.y[j] and neigh.id < self.id):
-                            self.update(neigh, j)
+                            self.update(neigh, task_id)
                 
                 # agent k (neighbour) thinks agent i (self) won task j
                 elif neigh.z[j] == self.id:
@@ -210,7 +224,7 @@ class GCBBA_Agent:
                         self.leave()
                     # agent i (self) thinks agent k (neighbour) won task j
                     elif self.z[j] == k:
-                        self.reset(j) # reset task j to clear conflict
+                        self.reset(task_id) # reset task j to clear conflict
                     # agent i (self) thinks no one won task j
                     elif self.z[j] == None:
                         self.leave()
@@ -219,7 +233,7 @@ class GCBBA_Agent:
                         m = int(self.z[j])
                         # update only if neighbour has more recent info
                         if neigh.s[m] > self.s[m]:
-                            self.reset(j)
+                            self.reset(task_id)
 
                 # agent k (neighbour) thinks no one won task j
                 elif neigh.z[j] == None:
@@ -228,7 +242,7 @@ class GCBBA_Agent:
                         self.leave()
                     # agent i (self) thinks agent k (neighbour) won task j
                     elif self.z[j] == k:
-                        self.update(neigh, j)
+                        self.update(neigh, task_id)
                     # agent i (self) thinks no one won task j
                     elif self.z[j] == None:
                         self.leave()
@@ -237,7 +251,7 @@ class GCBBA_Agent:
                         m = int(self.z[j])
                         # update only if neighbour has more recent info
                         if neigh.s[m] > self.s[m]:
-                            self.update(neigh, j)
+                            self.update(neigh, task_id)
                 
                 # agent k (neighbour) thinks agent m (neighbour m != k) won task j
                 else:
@@ -246,37 +260,37 @@ class GCBBA_Agent:
                     if self.z[j] == self.id:
                         # update only if neighbour has more recent info
                         if (neigh.s[m] > self.s[m] and neigh.y[j] > self.y[j]) or (neigh.s[m] > self.s[m] and neigh.y[j] == self.y[j] and neigh.id < self.id):
-                            self.update(neigh, j)
+                            self.update(neigh, task_id)
                     # agent i (self) thinks agent k (neighbour) won task j
                     elif self.z[j] == k:
                         # neighbour has more recent info
                         if neigh.s[m] > self.s[m]:
-                            self.update(neigh, j)
+                            self.update(neigh, task_id)
                         # reset stale belief
                         else:
-                            self.reset(j)
+                            self.reset(task_id)
                     # agent i (self) also thinks agent m won task j
                     elif self.z[j] == m:
                         # update only if neighbour has more recent info
                         if neigh.s[m] > self.s[m]:
-                            self.update(neigh, j)
+                            self.update(neigh, task_id)
                     # agent i (self) thinks no one won task j
                     elif self.z[j] == None:
                         # update only if neighbour has more recent info
                         if neigh.s[m] > self.s[m]:
-                            self.update(neigh, j)
+                            self.update(neigh, task_id)
                     # agent i (self) thinks agent n (neighbour n != k, n != m) won task j
                     else:
                         n = int(self.z[j])
                         # If neighbor has fresher info about BOTH m and n → accept neighbor's view (update)
                         if neigh.s[m] > self.s[m] and neigh.s[n] > self.s[n]:
-                            self.update(neigh, j)
+                            self.update(neigh, task_id)
                         # If neighbor has fresher info about m AND higher bid → update
                         elif (neigh.s[m] > self.s[m] and neigh.y[j] > self.y[j]) or (neigh.s[m] > self.s[m] and neigh.y[j] == self.y[j] and neigh.id < self.id):
-                            self.update(neigh, j)
+                            self.update(neigh, task_id)
                         # If neighbor has fresher info about n but you have fresher info about m → conflict, reset
                         elif neigh.s[n] > self.s[n] and self.s[m] > neigh.s[m]:
-                            self.reset(j)
+                            self.reset(task_id)
             self.compute_s(neigh, consensus_iter)
 
             # Neighbor convergence observation update
@@ -301,13 +315,73 @@ class GCBBA_Agent:
 
 
     def update(self, neighbor, task_id):
-        print (f"Agent {self.id} updating task {task_id} from neighbor {neighbor.id}")
 
-    def reset(self, j):
-        print (f"Agent {self.id} resetting task {j}")
+        task_idx = self._get_task_index(task_id)
+
+        # accept neighbor's bid and winner for task_id
+        self.y[task_idx] = neighbor.y[task_idx]
+        self.z[task_idx] = neighbor.z[task_idx]
+
+        bundle = self.b
+        # if task is in own bundle, remove it and all subsequent tasks
+        if task_id in bundle:                           
+            self.flag_won = False
+
+            # position of task in bundle, remove from there onwards
+            bundle_index = bundle.index(task_id)
+            tasks_to_remove = bundle[bundle_index:]
+
+            # clear winning bids and winners for removed tasks
+            for task_id_to_remove in tasks_to_remove:
+                idx = self._get_task_index(task_id_to_remove)
+                self.y[idx] = self.min_val
+                self.z[idx] = None
+
+            # accept neighbor's bid and winner for task_id again to ensure consistency in case it was removed
+            self.y[task_idx] = neighbor.y[task_idx]
+            self.z[task_idx] = neighbor.z[task_idx]
+
+            # remove tasks from bundle and path
+            self.b = self.b[:bundle_index]
+
+            for task in tasks_to_remove:
+                if task in self.p:
+                    self.p.remove(task)
+
+            self.S = self.S[:bundle_index + 1]
+
+            self.their_net_cvg[0] = False  # Reset convergence observation since bundle changed
+
+    def reset(self, task_id):
+        task_idx = self._get_task_index(task_id)
+        # Clear own bid and winner for task_id
+        self.y[task_idx] = self.min_val
+        self.z[task_idx] = None
+
+        bundle = self.b
+        # if task is in own bundle, remove it and all subsequent tasks
+        if task_id in bundle:
+            bundle_index = bundle.index(task_id)
+            tasks_to_remove = bundle[bundle_index:]
+
+            for task_id_to_remove in tasks_to_remove:
+                idx = self._get_task_index(task_id_to_remove)
+                self.y[idx] = self.min_val
+                self.z[idx] = None
+                    
+            self.b = self.b[:bundle_index]
+
+            for task in tasks_to_remove:
+                if task in self.p:
+                    self.p.remove(task)
+
+            self.S = self.S[:bundle_index + 1]
+
+            self.their_net_cvg[0] = False  # Reset convergence observation since bundle changed
     
     def leave(self):
-        print (f"Agent {self.id} doing nothing this round")
+        # print (f"Agent {self.id} doing nothing this round")
+        pass
     
     def compute_s(self, neighbor, consensus_iter):
         """
@@ -315,9 +389,11 @@ class GCBBA_Agent:
         :param neighbor: neighboring agent
         :param consensus_iter: current consensus iteration number
         """
-        print(f"Agent {self.id} updating timestamps from neighbor {neighbor.id}")
-        # for m in range(self.na):
-        #     if neighbor.s[m] > self.s[m]:
-        #         self.s[m] = neighbor.s[m]
-        
-        # self.s[neighbor.id] = consensus_iter + 1
+        self.s[self.id] = consensus_iter
+        self.s[neighbor.id] = consensus_iter
+
+        not_neighbor_ids = np.argwhere(self.G[self.id, :] == 0).flatten()
+        greater_index = np.argwhere(np.array(neighbor.s) > np.array(self.s)).flatten()
+        intersect = list(set(greater_index).intersection(set(not_neighbor_ids)))
+
+        self.s = [neighbor.s[i] if i in intersect else self.s[i] for i in range(self.na)]
