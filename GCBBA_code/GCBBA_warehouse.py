@@ -73,16 +73,7 @@ if __name__ == "__main__":
     
     # Initialize agents and tasks from warehouse config
     agents = agent_init(agent_positions, sp_lim=sp_lim)
-
-    # random task init
-    # LATER TODO: REMOVE THIS AND USE WAREHOUSE CONFIG TO INITIALIZE TASKS
-    tasks = random_task_init(nt=nt, xlim=xlim, ylim=ylim, 
-                             dur_lim=dur_lim, lamb_lim=[0.95, 0.95], clim=[1, 1])
-    
-    # induct_tasks = task_init(induct_positions, dur_lim=dur_lim)
-    # eject_tasks = task_init(eject_positions, dur_lim=dur_lim)
-
-    # tasks = induct_tasks + eject_tasks  # Combine induct and eject tasks
+    tasks = task_init(induct_positions, eject_positions, task_per_induct_station=10)
 
     # Initialize orchestrator (placeholder for now)
     orch_cbba = GCBBA_Orchestrator(G, D, tasks, agents, Lt)

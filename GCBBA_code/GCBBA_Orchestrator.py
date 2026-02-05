@@ -51,15 +51,15 @@ class GCBBA_Orchestrator:
     def initialize_tasks(self):
         self.tasks = []
         for j in range(self.nt):
-            char = self.char_t[j]
-            self.tasks.append(GCBBA_Task(id=j, char=char))
+            char_t = self.char_t[j]
+            self.tasks.append(GCBBA_Task(id=j, char_t=char_t))
     
     def initialize_agents(self):
         self.agents = []
         for i in range(self.na):
-            char = self.char_a[i]
+            char_a = self.char_a[i]
             self.agents.append(
-                GCBBA_Agent(id=i, G=self.G, char=char, tasks=self.tasks, Lt=self.Lt, 
+                GCBBA_Agent(id=i, G=self.G, char_a=char_a, tasks=self.tasks, Lt=self.Lt, 
                            start_time=self.start_time, metric=self.metric, D=self.D))
     
     def launch_agents(self, method="global", detector="decentralized"):

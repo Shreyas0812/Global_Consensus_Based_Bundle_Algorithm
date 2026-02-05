@@ -11,7 +11,7 @@ class GCBBA_Agent:
     """
     GCBBA Agent for warehouse operations
     """
-    def __init__(self, id, G, char, tasks, Lt=2, start_time=0, metric="RPT", D=1):
+    def __init__(self, id, G, char_a, tasks, Lt=2, start_time=0, metric="RPT", D=1):
         # int, id of agent
         self.id = id
         # communication matrix G (symmetrical), size Na * Na
@@ -21,9 +21,9 @@ class GCBBA_Agent:
         # int, number of neighbors according to G
         self.nb_neigh = np.sum(self.G[id, :])
         # tuple, position in cartesian plane
-        self.pos = np.array([char[0], char[1]])
-        self.speed = char[2]
-        self.agent_id = char[3]  # Unique agent identifier from warehouse config
+        self.pos = np.array([char_a[0], char_a[1]])
+        self.speed = char_a[2]
+        self.agent_id = char_a[3]  # Unique agent identifier from warehouse config
         # list of tasks
         self.tasks = tasks
         # int, nb of tasks
@@ -156,8 +156,11 @@ class GCBBA_Agent:
         Evaluate the score of a given path based on the selected metric
         :param path: list of tasks in the path
         :return: score of the path -- total path time or makespan
-        Later TODO: When the tasks are updated to start and end positions, update this function to
-        account for travel time between tasks.
+        
+        Path now consists of:
+        1. Travel to first task's induct position (task.pos[0], task.pos[1]) from agents current position self.pos
+        2. For each task: duration is distance from induct (task.pos[0], task.pos[1]) to eject (task.pos[2], task.pos[3])
+        3. Current position updates to eject position after each task
 
         L_i([j^i_1, ..., j^i_n]) = τ_{i,j^i_n}([j^i_1, ..., j^i_n])
         S_i(p_i) = Σ_{j∈p_i} c_ij(p^:j_i)
@@ -172,13 +175,22 @@ class GCBBA_Agent:
                 task_idx = self._get_task_index(task_id)
                 task = self.tasks[task_idx]
 
-                time += np.linalg.norm(cur_pos - task.pos) / self.speed
-                time += task.duration
-                score -= time
+                # Later TODO: The task duration will be given by external system which calculates the time as well as the actual collision-free path (we are only concerned with duration tho)
 
+                # Travel to induct position
+                induct_pos = task.induct_pos
+                time += np.linalg.norm(cur_pos - induct_pos) / self.speed
+                
+                # Task duration: distance from induct to eject
+                eject_pos = task.eject_pos
+                time += np.linalg.norm(induct_pos - eject_pos) / self.speed
+                
+                score -= time
                 time = 0  # Reset time for next task
 
-                cur_pos = task.pos
+                # Update current position to eject position
+                cur_pos = eject_pos
+                
         return score
     
     def resolve_conflicts(self, all_agents, consensus_iter=0, consensus_index_last=False):

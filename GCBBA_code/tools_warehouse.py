@@ -58,23 +58,20 @@ def agent_init(agent_positions, sp_lim=[1, 5]):
     return agents
 
 
-def task_init(task_positions, dur_lim=[1, 10], lamb_lim=[0.95, 0.95], clim=[1, 1]):
+def task_init(induct_positions, eject_positions, task_per_induct_station):
     """
     Create tasks characteristics from warehouse configuration
-    :param task_positions: List of task positions [(x, y, z, id), ...] - these become tasks
-    :param dur_lim: task duration limits
-    :param lamb_lim: lambda (TDR) limits
-    :param clim: weights (TDR) limits (useless in this implementation)
+    :param induct_positions: List of induct station positions [(x, y, z, id), ...] - these become tasks
+    :param eject_positions: List of eject station positions [(x, y, z, id), ...] - these become tasks
+    :param task_per_induct_station: Number of tasks per induct station
     :return: tasks list
     """
     # Tasks: [x_pos, y_pos, duration, lambda, weight]
     tasks = []
-    for pos in task_positions:
-        duration = np.random.uniform(dur_lim[0], dur_lim[1], 1)
-        lamb = np.random.uniform(lamb_lim[0], lamb_lim[1], 1)
-        weight = np.random.uniform(clim[0], clim[1], 1)
-        tasks.append(np.concatenate(([pos[0], pos[1]], duration, lamb, weight)))
-    
+    for current_induct_position in induct_positions:
+        for _ in range(task_per_induct_station):
+            random_eject_position = eject_positions[np.random.randint(0, len(eject_positions))]
+            tasks.append(np.array([current_induct_position[0], current_induct_position[1], random_eject_position[0], random_eject_position[1]]))
     return tasks
 
 
