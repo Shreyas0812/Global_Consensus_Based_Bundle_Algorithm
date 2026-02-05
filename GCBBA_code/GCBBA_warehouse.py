@@ -30,8 +30,7 @@ if __name__ == "__main__":
     
     # GCBBA specific parameters
     na = len(params['agent_positions']) // 3  # Number of agents
-    nt = 100 
-    Lt = ceil(nt / na)  # Tasks per agent
+    tasks_per_induct_station = 10  # Number of tasks per induct station
     xlim = [0, int(params['grid_width']) * params['grid_resolution']]
     ylim = [0, int(params['grid_height']) * params['grid_resolution']]
     sp_lim = [1, 5] # Speed limits in units/sec
@@ -63,7 +62,10 @@ if __name__ == "__main__":
     eject_positions = [(eject_pos_flat[i], eject_pos_flat[i+1], eject_pos_flat[i+2], eject_pos_flat[i+3]) 
                        for i in range(0, len(eject_pos_flat), 4)]
     
-    # Create communication graph based on distance (agent-to-agent and agent-to-induct)
+    nt = len(induct_positions) * tasks_per_induct_station  # Number of tasks 
+    Lt = ceil(nt / na)  # Tasks per agent
+
+    # Later TODO: Create communication graph based on distance (agent-to-agent and agent-to-induct)
     # raw_graph, G = create_graph_with_range(agent_positions, induct_positions, comm_range)
     
     # Create communication graph based on distance (agent-to-agent only)
@@ -73,7 +75,7 @@ if __name__ == "__main__":
     
     # Initialize agents and tasks from warehouse config
     agents = agent_init(agent_positions, sp_lim=sp_lim)
-    tasks = task_init(induct_positions, eject_positions, task_per_induct_station=10)
+    tasks = task_init(induct_positions, eject_positions, task_per_induct_station=tasks_per_induct_station)
 
     # Initialize orchestrator (placeholder for now)
     orch_cbba = GCBBA_Orchestrator(G, D, tasks, agents, Lt)

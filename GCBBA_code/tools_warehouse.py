@@ -38,8 +38,10 @@ def create_graph_with_range(agent_positions, comm_range):
     
     # Convert to adjacency matrix (nodes will be ordered as in agent_ids)
     G = nx.adjacency_matrix(raw_graph, nodelist=agent_ids).todense()
+    G = np.asarray(G.astype('float'))
+    np.fill_diagonal(G, 1.0)  # Ensure self-connections
     
-    return raw_graph, np.asarray(G.astype('float'))
+    return raw_graph, G
 
 
 def agent_init(agent_positions, sp_lim=[1, 5]):

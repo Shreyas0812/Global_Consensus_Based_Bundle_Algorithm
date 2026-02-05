@@ -107,7 +107,7 @@ class GCBBA_Agent:
             
             if self.c[j] > self.y[j]:
                 bids.append(self.c[j])
-            elif self.c[j] == self.y[j] and self.z[j] > self.id:
+            elif self.c[j] == self.y[j] and self.z[j] is not None and self.z[j] > self.id:
                 bids.append(self.c[j])
             else:
                 bids.append(self.min_val)
@@ -176,6 +176,7 @@ class GCBBA_Agent:
                 task = self.tasks[task_idx]
 
                 # Later TODO: The task duration will be given by external system which calculates the time as well as the actual collision-free path (we are only concerned with duration tho)
+                # Later TODO: May add an additional time to perform the induct/eject operation itself
 
                 # Travel to induct position
                 induct_pos = task.induct_pos
@@ -201,6 +202,8 @@ class GCBBA_Agent:
         :param consensus_index_last: boolean indicating if this is the last consensus index
         """
         niegh_idxs = np.argwhere(self.G[self.id, :] == 1).flatten()
+        niegh_idxs = niegh_idxs[niegh_idxs != self.id]  # Exclude self
+
         neigh_cvg = [True for _ in range(self.D)]
 
         for k in niegh_idxs:
@@ -330,6 +333,10 @@ class GCBBA_Agent:
 
         task_idx = self._get_task_index(task_id)
 
+        if task_idx is None:
+            print(f"Warning: task_id {task_id} not found in task list")
+            return
+
         # accept neighbor's bid and winner for task_id
         self.y[task_idx] = neighbor.y[task_idx]
         self.z[task_idx] = neighbor.z[task_idx]
@@ -366,6 +373,11 @@ class GCBBA_Agent:
 
     def reset(self, task_id):
         task_idx = self._get_task_index(task_id)
+
+        if task_idx is None:
+            print(f"Warning: task_id {task_id} not found in task list")
+            return
+        
         # Clear own bid and winner for task_id
         self.y[task_idx] = self.min_val
         self.z[task_idx] = None
