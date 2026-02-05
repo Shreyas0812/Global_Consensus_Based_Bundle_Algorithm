@@ -323,7 +323,6 @@ class GCBBA_Agent:
             self.cvg_counter += 1
         
         if consensus_index_last:
-            self.y_before = copy.deepcopy(self.y)
             self.z_before = copy.deepcopy(self.z)
             self.flag_won = (len(self.p) != self.len_p_before)
             self.len_p_before = len(self.p)
